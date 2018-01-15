@@ -374,10 +374,11 @@ VdpStatus vdp_presentation_queue_display(VdpPresentationQueue presentation_queue
     {
         VdpStatus ret;
 
-        ret = render_overlay(q->device, os->vs->fb_id,
-                q->device->dsp_mode == OVERLAY_FULLSCREEN,
-                os->vs->dec->coded_width, os->vs->dec->coded_height,
-                clip_width, clip_height);
+        //DAVE - don't care for overlays
+//         ret = render_overlay(q->device, os->vs->fb_id,
+//                 q->device->dsp_mode == OVERLAY_FULLSCREEN,
+//                 os->vs->dec->coded_width, os->vs->dec->coded_height,
+//                 clip_width, clip_height);
         if (ret != VDP_STATUS_OK)
         {
             VDPAU_ERR("Could not render overlay");
@@ -605,7 +606,7 @@ VdpStatus vdp_presentation_queue_display(VdpPresentationQueue presentation_queue
             glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, os->rgba.width, os->rgba.height, 0, GL_RGBA,
                       GL_UNSIGNED_BYTE, os->rgba.data);
             CHECKEGL
-            os->rgba.flags &= ~RGBA_FLAG_CHANGED;
+            os->rgba.flags &= ~RGBA_FLAG_NEEDS_CLEAR;
         }
         glUniform1i (shader->texture[0], 0);
         CHECKEGL
