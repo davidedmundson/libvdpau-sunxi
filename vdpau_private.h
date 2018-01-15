@@ -117,20 +117,11 @@ typedef struct
 	cedrus_mem_t *data;
 } yuv_data_t;
 
-typedef struct decoder_ctx_struct
-{
-	uint32_t width, height;
-	VdpDecoderProfile profile;
-	cedrus_mem_t *data;
-	device_ctx_t *device;
-	VdpStatus (*decode)(struct decoder_ctx_struct *decoder, VdpPictureInfo const *info, const int len, video_surface_ctx_t *output);
-	void *private;
-	void (*private_free)(struct decoder_ctx_struct *decoder);
-} decoder_ctx_t;
+typedef struct decoder_ctx_t;
 
 typedef struct video_surface_ctx_struct
 {
-    decoder_ctx_t *dec;
+    struct decoder_ctx_t *dec;
 	device_ctx_t *device;
 	uint32_t width, height;
 	VdpChromaType chroma_type;
@@ -155,6 +146,17 @@ typedef struct video_surface_ctx_struct
     GLuint framebuffer;
 
 } video_surface_ctx_t;
+
+typedef struct decoder_ctx_struct
+{
+	uint32_t width, height;
+	VdpDecoderProfile profile;
+	cedrus_mem_t *data;
+	device_ctx_t *device;
+	VdpStatus (*decode)(struct decoder_ctx_struct *decoder, VdpPictureInfo const *info, const int len, video_surface_ctx_t *output);
+	void *private;
+	void (*private_free)(struct decoder_ctx_struct *decoder);
+} decoder_ctx_t;
 
 typedef struct
 {
