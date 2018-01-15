@@ -53,6 +53,50 @@ typedef enum
 
 typedef struct
 {
+    GLuint program;
+    GLuint vertex_shader;
+    GLuint fragment_shader;
+
+    /* standard locations, used in most shaders */
+    GLint position_loc;
+    GLint texcoord_loc;
+    GLint rcoeff_loc;
+    GLint gcoeff_loc;
+    GLint bcoeff_loc;
+
+    /* Used in YUYV & UYUV shaders */
+    GLint stepX;
+
+    GLint texture[3];
+} shader_ctx_t;
+
+typedef struct
+{
+    EGLDisplay display;
+    EGLConfig config;
+    EGLContext context;
+    EGLSurface surface;
+
+    shader_ctx_t yuvi420_rgb;
+    shader_ctx_t yuyv422_rgb;
+    shader_ctx_t uyvy422_rgb;
+    shader_ctx_t yuvnv12_rgb;
+    shader_ctx_t yuv8444_rgb;
+    shader_ctx_t vuy8444_rgb;
+    shader_ctx_t copy;
+    shader_ctx_t brswap;
+    shader_ctx_t oes;
+} device_egl_t;
+
+enum display_mode {
+    NO_OVERLAY,
+    OVERLAY,
+    OVERLAY_FULLSCREEN,
+};
+
+
+typedef struct
+{
 	cedrus_t *cedrus;
 	Display *display;
 	int screen;
