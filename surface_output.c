@@ -41,8 +41,6 @@ VdpStatus vdp_output_surface_create(VdpDevice device,
 	out->contrast = 1.0;
 	out->saturation = 1.0;
 
-
-	surface = handle_create(out);
     int handle = handle_create(out);
     if (handle == -1)
     {
