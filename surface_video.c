@@ -637,27 +637,6 @@ VdpStatus vdp_video_surface_destroy(VdpVideoSurface surface)
 	return VDP_STATUS_OK;
 }*/
 
-VdpStatus vdp_video_surface_get_parameters(VdpVideoSurface surface,
-                                           VdpChromaType *chroma_type,
-                                           uint32_t *width,
-                                           uint32_t *height)
-{
-	video_surface_ctx_t *vid = handle_get(surface);
-	if (!vid)
-		return VDP_STATUS_INVALID_HANDLE;
-
-	if (chroma_type)
-		*chroma_type = vid->chroma_type;
-
-	if (width)
-		*width = vid->width;
-
-	if (height)
-		*height = vid->height;
-
-	return VDP_STATUS_OK;
-}
-
 
 /*old get bits
 VdpStatus vdp_video_surface_get_bits_y_cb_cr(VdpVideoSurface surface,
@@ -783,43 +762,4 @@ VdpStatus vdp_video_surface_put_bits_y_cb_cr(VdpVideoSurface surface,
 	return VDP_STATUS_OK;
 }*/
 
-VdpStatus vdp_video_surface_query_capabilities(VdpDevice device,
-                                               VdpChromaType surface_chroma_type,
-                                               VdpBool *is_supported,
-                                               uint32_t *max_width,
-                                               uint32_t *max_height)
-{
-	if (!is_supported || !max_width || !max_height)
-		return VDP_STATUS_INVALID_POINTER;
 
-	device_ctx_t *dev = handle_get(device);
-	if (!dev)
-		return VDP_STATUS_INVALID_HANDLE;
-
-	*is_supported = surface_chroma_type == VDP_CHROMA_TYPE_420;
-	*max_width = 8192;
-	*max_height = 8192;
-
-	return VDP_STATUS_OK;
-}
-
-VdpStatus vdp_video_surface_query_get_put_bits_y_cb_cr_capabilities(VdpDevice device,
-                                                                    VdpChromaType surface_chroma_type,
-                                                                    VdpYCbCrFormat bits_ycbcr_format,
-                                                                    VdpBool *is_supported)
-{
-	if (!is_supported)
-		return VDP_STATUS_INVALID_POINTER;
-
-	device_ctx_t *dev = handle_get(device);
-	if (!dev)
-		return VDP_STATUS_INVALID_HANDLE;
-
-	if (surface_chroma_type == VDP_CHROMA_TYPE_420)
-		*is_supported = (bits_ycbcr_format == VDP_YCBCR_FORMAT_NV12) ||
-				(bits_ycbcr_format == VDP_YCBCR_FORMAT_YV12);
-	else
-		*is_supported = VDP_FALSE;
-
-	return VDP_STATUS_OK;
-}
