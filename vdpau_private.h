@@ -273,6 +273,10 @@ int handle_create(void *data);
 void *handle_get(int handle);
 void handle_destroy(int handle);
 
+int gl_init_shader (shader_ctx_t *shader, shader_type_t process_type);
+void gl_delete_shader (shader_ctx_t *shader);
+GLuint gl_create_texture(GLuint tex_filter);
+
 EXPORT VdpDeviceCreateX11 vdp_imp_device_create_x11;
 VdpDeviceDestroy vdp_device_destroy;
 VdpPreemptionCallbackRegister vdp_preemption_callback_register;

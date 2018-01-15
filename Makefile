@@ -1,7 +1,7 @@
 TARGET = libvdpau_sunxi.so.1
 SRC = device.c presentation_queue.c surface_output.c surface_video.c \
 	surface_bitmap.c video_mixer.c decoder.c handles.c \
-	h264.c mpeg12.c mpeg4.c rgba.c tiled_yuv.S h265.c
+	h264.c mpeg12.c mpeg4.c rgba.c tiled_yuv.S h265.c gles.c
 CFLAGS ?= -Wall -O3 -I/usr/include/libdrm
 LDFLAGS ?=
 LIBS = -lrt -lm -lX11 -lpthread -lcedrus -ldrm -lEGL -lGLESv2
