@@ -264,7 +264,7 @@ gl_init_shader (shader_ctx_t *shader,
 
     shader->program = glCreateProgram();
     if(!shader->program) {
-        VDPAU_DBG("Could not create GL program");
+        VDPAU_DBG("Could not create GL program %d", glGetError());
         return -ENOMEM;
     }
 
