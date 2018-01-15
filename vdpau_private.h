@@ -119,6 +119,7 @@ typedef struct
 
 typedef struct video_surface_ctx_struct
 {
+    decoder_ctx_t *dec;
 	device_ctx_t *device;
 	uint32_t width, height;
 	VdpChromaType chroma_type;
