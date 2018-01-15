@@ -117,7 +117,7 @@ typedef struct
 	cedrus_mem_t *data;
 } yuv_data_t;
 
-strct decoder_ctx_t;
+struct decoder_ctx_t;
 
 typedef struct video_surface_ctx_struct
 {
