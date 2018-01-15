@@ -249,11 +249,13 @@ typedef struct
 #ifdef DEBUG
 #include <stdio.h>
 #define VDPAU_DBG(format, ...) fprintf(stderr, "[VDPAU SUNXI] " format "\n", ##__VA_ARGS__)
+#define VDPAU_ERR(format, ...) fprintf(stderr, "[VDPAU SUNXI] " format "\n", ##__VA_ARGS__)
 #define VDPAU_DBG_ONCE(format, ...) do { static uint8_t __once; if (!__once) { fprintf(stderr, "[VDPAU SUNXI] " format "\n", ##__VA_ARGS__); __once = 1; } } while(0)
 #else
 #define VDPAU_DBG(format, ...)
 #define VDPAU_DBG_ONCE(format, ...)
 #endif
+#define CHECKEGL { int e=glGetError(); if (e) fprintf(stderr, "\e[1;31m[VDPAU SUNXI ERROR %s:%d]\e[0m %d(0x%x)\n", __FILE__, __LINE__, e, e);}
 
 #define EXPORT __attribute__ ((visibility ("default")))
 
