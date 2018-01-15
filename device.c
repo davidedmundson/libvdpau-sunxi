@@ -121,63 +121,63 @@ VdpStatus vdp_imp_device_create_x11(Display *display,
 
     int ret = gl_init_shader (&dev->egl.yuvi420_rgb, SHADER_YUVI420_RGB);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 0: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.yuyv422_rgb, SHADER_YUYV422_RGB);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 1: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.uyvy422_rgb, SHADER_UYVY422_RGB);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 2: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.yuvnv12_rgb, SHADER_YUVNV12_RGB);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 3: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.yuv8444_rgb, SHADER_YUV8444_RGB);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 4: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.vuy8444_rgb, SHADER_VUY8444_RGB);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 5: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.copy, SHADER_COPY);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 6: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.brswap, SHADER_BRSWAP_COPY);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 7: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
 
     ret = gl_init_shader (&dev->egl.oes, SHADER_OES);
     if (ret < 0) {
-        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        VDPAU_DBG ("Could not initialize shader 8: %d", ret);
         free(dev);
         return VDP_STATUS_RESOURCES;
     }
