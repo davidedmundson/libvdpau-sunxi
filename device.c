@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013 Jens Kuske <jenskuske@gmail.com>
+ *  Copyright (c) 2017 David Edmundson <davidedmundson@kde.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,72 +24,231 @@
 #include <cedrus/cedrus.h>
 #include "vdpau_private.h"
 
+__attribute__((constructor))
+static
+void
+library_constructor(void)
+{
+    XInitThreads();
+}
+
 VdpStatus vdp_imp_device_create_x11(Display *display,
                                     int screen,
                                     VdpDevice *device,
                                     VdpGetProcAddress **get_proc_address)
 {
-	if (!display || !device || !get_proc_address)
-		return VDP_STATUS_INVALID_POINTER;
+    printf("11111111111\n");
+    if (!display || !device || !get_proc_address)
+        return VDP_STATUS_INVALID_POINTER;
 
-	device_ctx_t *dev = handle_create(sizeof(*dev), device);
-	if (!dev)
-		return VDP_STATUS_RESOURCES;
+    device_ctx_t *dev = calloc(1, sizeof(device_ctx_t));
+    if (!dev)
+        return VDP_STATUS_RESOURCES;
 
-	dev->display = XOpenDisplay(XDisplayString(display));
-	dev->screen = screen;
+    int handle = handle_create(dev);
+    if (handle == -1)
+    {
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
 
-	dev->cedrus = cedrus_open();
-	if (!dev->cedrus)
-	{
-		XCloseDisplay(dev->display);
-		handle_destroy(*device);
-		return VDP_STATUS_ERROR;
-	}
+    dev->display = XOpenDisplay(XDisplayString(display));
+    dev->screen = screen;
 
-	VDPAU_DBG("VE version 0x%04x opened", cedrus_get_ve_version(dev->cedrus));
-	*get_proc_address = vdp_get_proc_address;
+    const EGLint configAttribs[] =
+    {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_NONE
+    };
 
-	char *env_vdpau_osd = getenv("VDPAU_OSD");
-	char *env_vdpau_g2d = getenv("VDPAU_DISABLE_G2D");
-	if (env_vdpau_osd && strncmp(env_vdpau_osd, "1", 1) == 0)
-		dev->osd_enabled = 1;
-	else
-	{
-		VDPAU_DBG("OSD disabled!");
-		return VDP_STATUS_OK;
-	}
+    EGLint num_configs;
+    EGLint major;
+    EGLint minor;
 
-	if (!env_vdpau_g2d || strncmp(env_vdpau_g2d, "1", 1) !=0)
-	{
-		dev->g2d_fd = open("/dev/g2d", O_RDWR);
-		if (dev->g2d_fd != -1)
-		{
-			dev->g2d_enabled = 1;
-			VDPAU_DBG("OSD enabled, using G2D!");
-		}
-	}
+    dev->egl.display = eglGetDisplay((EGLNativeDisplayType)dev->display);
+    if (dev->egl.display == EGL_NO_DISPLAY) {
+        VDPAU_DBG ("Could not get EGL display");
+        return VDP_STATUS_RESOURCES;
+    }
 
-	if (!dev->g2d_enabled)
-		VDPAU_DBG("OSD enabled, using pixman");
+    if (!eglInitialize(dev->egl.display, &major, &minor)) {
+        VDPAU_DBG ("Could not initialize EGL context");
+        return VDP_STATUS_RESOURCES;
+    }
 
-	return VDP_STATUS_OK;
+    if (!eglChooseConfig(dev->egl.display, configAttribs, &dev->egl.config, 1,
+                        &num_configs)) {
+        VDPAU_DBG ("Could not choose EGL config");
+        return VDP_STATUS_RESOURCES;
+    }
+
+    if (num_configs != 1) {
+        VDPAU_DBG("Did not get exactly one config, but %d",
+                           num_configs);
+    }
+
+    Window drawable = DefaultRootWindow(dev->display);
+    dev->egl.surface = eglCreateWindowSurface(dev->egl.display, dev->egl.config,
+                                     (EGLNativeWindowType)drawable, NULL);
+    if (dev->egl.surface == EGL_NO_SURFACE) {
+        VDPAU_DBG ("Could not create EGL surface %x", eglGetError());
+        return VDP_STATUS_RESOURCES;
+    }
+
+    const EGLint contextAttribs[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE
+    };
+
+    dev->egl.context = eglCreateContext(dev->egl.display, dev->egl.config,
+                                     EGL_NO_CONTEXT, contextAttribs);
+    if (dev->egl.context == EGL_NO_CONTEXT) {
+        VDPAU_DBG ("Could not create EGL context %x", eglGetError());
+        return VDP_STATUS_RESOURCES;
+    }
+
+    if (!eglMakeCurrent(dev->egl.display, dev->egl.surface,
+                        dev->egl.surface, dev->egl.context)) {
+        VDPAU_DBG ("Could not set EGL context to current %x", eglGetError());
+        return VDP_STATUS_RESOURCES;
+    }
+
+    int ret = gl_init_shader (&dev->egl.yuvi420_rgb, SHADER_YUVI420_RGB);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.yuyv422_rgb, SHADER_YUYV422_RGB);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.uyvy422_rgb, SHADER_UYVY422_RGB);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.yuvnv12_rgb, SHADER_YUVNV12_RGB);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.yuv8444_rgb, SHADER_YUV8444_RGB);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.vuy8444_rgb, SHADER_VUY8444_RGB);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.copy, SHADER_COPY);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.brswap, SHADER_BRSWAP_COPY);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    ret = gl_init_shader (&dev->egl.oes, SHADER_OES);
+    if (ret < 0) {
+        VDPAU_DBG ("Could not initialize shader: %d", ret);
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    if (!eglMakeCurrent(dev->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+        VDPAU_DBG ("Could not set EGL context to none %x", eglGetError());
+        free(dev);
+        return VDP_STATUS_RESOURCES;
+    }
+
+    *device = handle;
+    *get_proc_address = &vdp_get_proc_address;
+
+    dev->dsp_mode = NO_OVERLAY;
+    dev->saved_fb = -1;
+    if (getenv("OVERLAY")) {
+#define DRM_PATH "/dev/dri/card0"
+#define DRM_CTL_PATH "/dev/dri/controlD64"
+
+        dev->drm_fd = open(DRM_PATH, O_RDWR);
+        if (dev->drm_fd <= 0) {
+            VDPAU_ERR("Could not open %s", DRM_PATH);
+            goto end;
+        }
+        dev->drm_ctl_fd = open(DRM_CTL_PATH, O_RDWR);
+        if (dev->drm_ctl_fd <= 0) {
+            VDPAU_ERR("Could not open %s", DRM_CTL_PATH);
+            goto end;
+        }
+        if (getenv("OVERLAY_FULLSCREEN"))
+            dev->dsp_mode = OVERLAY_FULLSCREEN;
+        else
+            dev->dsp_mode = OVERLAY;
+    }
+
+end:
+
+    return VDP_STATUS_OK;
 }
 
 VdpStatus vdp_device_destroy(VdpDevice device)
 {
-	device_ctx_t *dev = handle_get(device);
-	if (!dev)
-		return VDP_STATUS_INVALID_HANDLE;
+    device_ctx_t *dev = handle_get(device);
+    if (!dev)
+        return VDP_STATUS_INVALID_HANDLE;
 
-	if (dev->g2d_enabled)
-		close(dev->g2d_fd);
-	cedrus_close(dev->cedrus);
-	XCloseDisplay(dev->display);
+    if (dev->drm_fd)
+        close(dev->drm_fd);
 
-	handle_destroy(device);
+    if (dev->drm_ctl_fd)
+        close(dev->drm_ctl_fd);
 
-	return VDP_STATUS_OK;
+    gl_delete_shader(&dev->egl.yuvi420_rgb);
+    gl_delete_shader(&dev->egl.yuyv422_rgb);
+    gl_delete_shader(&dev->egl.uyvy422_rgb);
+    gl_delete_shader(&dev->egl.yuvnv12_rgb);
+    gl_delete_shader(&dev->egl.yuv8444_rgb);
+    gl_delete_shader(&dev->egl.vuy8444_rgb);
+    gl_delete_shader(&dev->egl.copy);
+    gl_delete_shader(&dev->egl.brswap);
+
+    eglDestroyContext(dev->egl.display, dev->egl.context);
+    eglDestroySurface(dev->egl.display, dev->egl.surface);
+
+    eglTerminate (dev->egl.display);
+    XCloseDisplay(dev->display);
+
+    handle_destroy(device);
+    free(dev);
+
+    return VDP_STATUS_OK;
 }
 
 VdpStatus vdp_preemption_callback_register(VdpDevice device,
@@ -277,7 +437,7 @@ VdpStatus vdp_get_information_string(char const **information_string)
 	if (!information_string)
 		return VDP_STATUS_INVALID_POINTER;
 
-	*information_string = "sunxi VDPAU Driver";
+	*information_string = "sunxi VDPAU Driver (Dave Edition)";
 	return VDP_STATUS_OK;
 }
 
