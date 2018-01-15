@@ -35,7 +35,7 @@ VdpStatus vdp_decoder_create(VdpDevice device,
 	if (max_references > 16)
 		return VDP_STATUS_ERROR;
 
-	decoder_ctx_t *dec = handle_create(sizeof(*dec), decoder);
+    decoder_ctx_t *dec = calloc(1, sizeof(decoder_ctx_t));
 	if (!dec)
 		goto err_ctx;
 
