@@ -116,6 +116,8 @@ VdpStatus vdp_video_surface_create(VdpDevice device,
                                    uint32_t height,
                                    VdpVideoSurface *surface)
 {
+
+    printf("DAVE: making a video surface\n");
     if (!surface)
         return VDP_STATUS_INVALID_POINTER;
 

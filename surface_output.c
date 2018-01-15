@@ -26,6 +26,7 @@ VdpStatus vdp_output_surface_create(VdpDevice device,
                                     uint32_t height,
                                     VdpOutputSurface *surface)
 {
+    printf("DAVE: making a video output\n");
 	int ret = VDP_STATUS_OK;
 
 	if (!surface)
