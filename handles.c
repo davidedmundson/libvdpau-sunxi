@@ -24,81 +24,62 @@
 
 #define INITIAL_SIZE 16
 
+#include <string.h>
+
+#include "vdpau_private.h"
+
+#define INITIAL_SIZE 16
+
 static struct
 {
-	void **data;
-	size_t size;
-	pthread_rwlock_t lock;
-} ht = { .lock = PTHREAD_RWLOCK_INITIALIZER };
+    void **data;
+    int size;
+} ht;
 
-void *handle_create(size_t size, VdpHandle *handle)
+int handle_create(void *data)
 {
-	*handle = VDP_INVALID_HANDLE;
+    int index;
 
-	if (pthread_rwlock_wrlock(&ht.lock))
-		return NULL;
+    if (!data)
+        return -1;
 
-	unsigned int index;
-	void *data = NULL;
+    for (index = 0; index < ht.size; index++)
+        if (ht.data[index] == NULL)
+            break;
 
-	for (index = 0; index < ht.size; index++)
-		if (ht.data[index] == NULL)
-			break;
+    if (index >= ht.size)
+    {
+        int new_size = ht.size ? ht.size * 2 : INITIAL_SIZE;
+        void **new_data = realloc(ht.data, new_size * sizeof(void *));
+        if (!new_data)
+            return -1;
 
-	if (index >= ht.size)
-	{
-		int new_size = ht.size ? ht.size * 2 : INITIAL_SIZE;
-		void **new_data = realloc(ht.data, new_size * sizeof(void *));
-		if (!new_data)
-			goto out;
+        memset(new_data + ht.size, 0, (new_size - ht.size) * sizeof(void *));
+        ht.data = new_data;
+        ht.size = new_size;
+    }
 
-		memset(new_data + ht.size, 0, (new_size - ht.size) * sizeof(void *));
-		ht.data = new_data;
-		ht.size = new_size;
-	}
-
-	data = calloc(1, size);
-	if (!data)
-		goto out;
-
-	ht.data[index] = data;
-	*handle = index + 1;
-
-out:
-	pthread_rwlock_unlock(&ht.lock);
-	return data;
+    ht.data[index] = data;
+    return index + 1;
 }
 
-void *handle_get(VdpHandle handle)
+void *handle_get(int handle)
 {
-	if (handle == VDP_INVALID_HANDLE)
-		return NULL;
+    if (handle == VDP_INVALID_HANDLE)
+        return NULL;
 
-	if (pthread_rwlock_rdlock(&ht.lock))
-		return NULL;
+    int index = handle - 1;
+    if (index < ht.size)
+        return ht.data[index];
 
-	unsigned int index = handle - 1;
-	void *data = NULL;
-
-	if (index < ht.size)
-		data = ht.data[index];
-
-	pthread_rwlock_unlock(&ht.lock);
-	return data;
+    return NULL;
 }
 
-void handle_destroy(VdpHandle handle)
+void handle_destroy(int handle)
 {
-	if (pthread_rwlock_wrlock(&ht.lock))
-		return;
+    int index = handle - 1;
 
-	unsigned int index = handle - 1;
-
-	if (index < ht.size)
-	{
-		free(ht.data[index]);
-		ht.data[index] = NULL;
-	}
-
-	pthread_rwlock_unlock(&ht.lock);
+    if (index < ht.size)
+        ht.data[index] = NULL;
 }
+

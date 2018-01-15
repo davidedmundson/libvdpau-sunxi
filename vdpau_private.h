@@ -20,6 +20,7 @@
 #ifndef __VDPAU_PRIVATE_H__
 #define __VDPAU_PRIVATE_H__
 
+#define GL_OES
 #define DEBUG
 #define MAX_HANDLES 64
 #define VBV_SIZE (1 * 1024 * 1024)
@@ -29,10 +30,26 @@
 #include <vdpau/vdpau.h>
 #include <vdpau/vdpau_x11.h>
 #include <X11/Xlib.h>
-#include "sunxi_disp.h"
 #include "pixman.h"
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+
+
 
 #define INTERNAL_YCBCR_FORMAT (VdpYCbCrFormat)0xffff
+
+typedef enum
+{
+    SHADER_YUVI420_RGB = 0,
+    SHADER_YUYV422_RGB,
+    SHADER_UYVY422_RGB,
+    SHADER_YUVNV12_RGB,
+    SHADER_YUV8444_RGB,
+    SHADER_VUY8444_RGB,
+    SHADER_COPY,
+    SHADER_BRSWAP_COPY,
+    SHADER_OES,
+} shader_type_t;
 
 typedef struct
 {
@@ -41,10 +58,13 @@ typedef struct
 	int screen;
 	VdpPreemptionCallback *preemption_callback;
 	void *preemption_callback_context;
-	int fd;
-	int g2d_fd;
-	int osd_enabled;
-	int g2d_enabled;
+    int drm_fd;
+    int drm_ctl_fd;
+    int saved_fb;
+    enum display_mode dsp_mode;
+    Drawable drawable;
+
+    device_egl_t egl;
 } device_ctx_t;
 
 typedef struct
@@ -184,9 +204,9 @@ VdpStatus rec_prepare(video_surface_ctx_t *video_surface);
 
 typedef uint32_t VdpHandle;
 
-void *handle_create(size_t size, VdpHandle *handle);
-void *handle_get(VdpHandle handle);
-void handle_destroy(VdpHandle handle);
+int handle_create(void *data);
+void *handle_get(int handle);
+void handle_destroy(int handle);
 
 EXPORT VdpDeviceCreateX11 vdp_imp_device_create_x11;
 VdpDeviceDestroy vdp_device_destroy;
