@@ -128,6 +128,20 @@ typedef struct video_surface_ctx_struct
 	cedrus_mem_t *rec;
 	void *decoder_private;
 	void (*decoder_private_free)(struct video_surface_ctx_struct *surface);
+
+    uint32_t fb_id;
+    uint32_t dma_fd;
+    void *private;
+
+    GLuint y_tex;
+    GLuint u_tex;
+    GLuint v_tex;
+
+    GLuint rgb_tex;
+    GLuint oes_tex;
+
+    GLuint framebuffer;
+
 } video_surface_ctx_t;
 
 typedef struct decoder_ctx_struct
@@ -143,8 +157,12 @@ typedef struct decoder_ctx_struct
 
 typedef struct
 {
-	Drawable drawable;
-	struct sunxi_disp *disp;
+    device_ctx_t *device;
+    Drawable drawable;
+
+    EGLSurface surface;
+    EGLContext context;
+    GLuint overlay;
 } queue_target_ctx_t;
 
 typedef struct
