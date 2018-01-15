@@ -130,8 +130,11 @@ VdpStatus vdp_video_mixer_render(VdpVideoMixer mixer,
         if (os->vs->dma_fd > 0) {
 
             os->vs->source_format = VDP_YCBCR_FORMAT_NV12;
-            int w = os->vs->dec->coded_width;
-            int h = os->vs->dec->coded_height;
+            printf("DAVE, fixme!\n");
+//             int w = os->vs->dec->coded_width;
+//             int h = os->vs->dec->coded_height;
+            int w = 0;
+            int h = 0;
 
             if (os->vs->device->dsp_mode != NO_OVERLAY) {
                 uint32_t handles[4], pitches[4], offsets[4];
@@ -181,7 +184,8 @@ VdpStatus vdp_video_mixer_render(VdpVideoMixer mixer,
                 munmap(buf, size);
             }
 
-            os->vs->dec->release_picture(os->vs->dec, os->vs);
+            printf("DAVE - fixme\n");
+//             os->vs->dec->release_picture(os->vs->dec, os->vs);
         }
     }
 
