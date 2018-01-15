@@ -17,10 +17,14 @@
  *
  */
 
+
+#include <memory.h>
+#include <sys/mman.h>
 #include <string.h>
 #include <cedrus/cedrus.h>
 #include "vdpau_private.h"
 #include "tiled_yuv.h"
+#include <time.h>
 
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -247,32 +251,33 @@ VdpStatus vdp_video_surface_get_bits_y_cb_cr(VdpVideoSurface surface,
                                              void *const *dst_data,
                                              uint32_t const *dst_pitches)
 {
-    video_surface_ctx_t *vs = handle_get(surface);
-    if (!vs || vs->dma_fd <= 0)
-        return VDP_STATUS_INVALID_HANDLE;
-
-    if (dst_format != VDP_YCBCR_FORMAT_YV12)
-        return VDP_STATUS_RESOURCES;
-
-    int w = vs->dec->coded_width;
-    int h = vs->dec->coded_height;
-
-    size_t size = w * h * 3 / 2;
-    void *buf = mmap(NULL, size,
-            PROT_READ | PROT_WRITE, MAP_SHARED,
-            vs->dma_fd, 0);
-
-    if (!buf)
-        return VDP_STATUS_RESOURCES;
-
-    memcpy(dst_data[0], buf, w * h);
-
-    int i;
-    for (i = 0; i < (w * h / 2); i ++) {
-        ((uint8_t*)dst_data[2 - i % 2])[i >> 1] = ((uint8_t*)buf)[w * h + i];
-    }
-
-    munmap(buf, size);
+    printf("Dave, why are we getting bits?\n");
+//     video_surface_ctx_t *vs = handle_get(surface);
+//     if (!vs || vs->dma_fd <= 0)
+//         return VDP_STATUS_INVALID_HANDLE;
+//
+//     if (dst_format != VDP_YCBCR_FORMAT_YV12)
+//         return VDP_STATUS_RESOURCES;
+//
+//     int w = vs->dec->coded_width;
+//     int h = vs->dec->coded_height;
+//
+//     size_t size = w * h * 3 / 2;
+//     void *buf = mmap(NULL, size,
+//             PROT_READ | PROT_WRITE, MAP_SHARED,
+//             vs->dma_fd, 0);
+//
+//     if (!buf)
+//         return VDP_STATUS_RESOURCES;
+//
+//     memcpy(dst_data[0], buf, w * h);
+//
+//     int i;
+//     for (i = 0; i < (w * h / 2); i ++) {
+//         ((uint8_t*)dst_data[2 - i % 2])[i >> 1] = ((uint8_t*)buf)[w * h + i];
+//     }
+//
+//     munmap(buf, size);
 
     return VDP_STATUS_OK;
 }
