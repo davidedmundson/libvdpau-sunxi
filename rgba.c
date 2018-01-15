@@ -23,7 +23,6 @@
 #include "vdpau_private.h"
 #include "rgba.h"
 #include "rgba_pixman.h"
-#include "rgba_g2d.h"
 
 static void dirty_add_rect(VdpRect *dirty, const VdpRect *rect)
 {
@@ -62,8 +61,8 @@ VdpStatus rgba_create(rgba_surface_t *rgba,
 		if (!rgba->data)
 			return VDP_STATUS_RESOURCES;
 
-		if(!device->g2d_enabled)
-			vdp_pixman_ref(rgba);
+// 		if(!device->g2d_enabled)
+// 			vdp_pixman_ref(rgba);
 
 		rgba->dirty.x0 = width;
 		rgba->dirty.y0 = height;
@@ -79,8 +78,8 @@ void rgba_destroy(rgba_surface_t *rgba)
 {
 	if (rgba->device->osd_enabled)
 	{
-		if(!rgba->device->g2d_enabled)
-			vdp_pixman_unref(rgba);
+// 		if(!rgba->device->g2d_enabled)
+// 			vdp_pixman_unref(rgba);
 
 		cedrus_mem_free(rgba->data);
 	}
@@ -248,8 +247,8 @@ void rgba_fill(rgba_surface_t *dest, const VdpRect *dest_rect, uint32_t color)
 	{
 		if(dest->device->g2d_enabled)
 		{
-			rgba_flush(dest);
-			g2d_fill(dest, dest_rect, color);
+// 			rgba_flush(dest);
+// 			g2d_fill(dest, dest_rect, color);
 		}
 		else
 		{
@@ -265,9 +264,9 @@ void rgba_blit(rgba_surface_t *dest, const VdpRect *dest_rect, rgba_surface_t *s
 	{
 		if(dest->device->g2d_enabled)
 		{
-			rgba_flush(dest);
-			rgba_flush(src);
-			g2d_blit(dest, dest_rect, src, src_rect);
+// 			rgba_flush(dest);
+// 			rgba_flush(src);
+// 			g2d_blit(dest, dest_rect, src, src_rect);
 		}
 		else
 		{
