@@ -54,6 +54,13 @@ VdpStatus vdp_imp_device_create_x11(Display *display,
 
     dev->display = XOpenDisplay(XDisplayString(display));
     dev->screen = screen;
+    dev->cedrus = cedrus_open();
+	if (!dev->cedrus)
+	{
+		XCloseDisplay(dev->display);
+		handle_destroy(*device);
+		return VDP_STATUS_ERROR;
+	}
 
     const EGLint configAttribs[] =
     {
