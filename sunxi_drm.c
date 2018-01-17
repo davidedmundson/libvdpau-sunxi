@@ -53,12 +53,12 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 
     struct sunxi_drm_private *disp = calloc(1, sizeof(*disp));
 
-    int disp->fd = open(DRM_PATH, O_RDWR);
+    disp->fd = open(DRM_PATH, O_RDWR);
     if (disp->fd <= 0) {
         printf("Could not open %s", DRM_PATH);
         return 0;
     }
-    int disp->ctrl_fd = open(DRM_CTL_PATH, O_RDWR);
+    disp->ctrl_fd = open(DRM_CTL_PATH, O_RDWR);
     if (disp->ctrl_fd <= 0) {
         printf("Could not open %s", DRM_CTL_PATH);
         return 0;
