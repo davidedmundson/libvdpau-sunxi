@@ -40,6 +40,13 @@ struct sunxi_drm_private
 	int osd_layer;
 };
 
+
+enum {
+	DEPTH = 24,
+	BPP = 32,
+};
+
+
 static void sunxi_disp_close(struct sunxi_disp *sunxi_disp);
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface);
 static void sunxi_disp_close_video_layer(struct sunxi_disp *sunxi_disp);
@@ -199,40 +206,38 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
 {
     printf("setting layer\n");
+    int ret;
+    struct drm_mode_create_dumb creq;
+	struct drm_mode_map_dumb mreq;
 
-	struct sunxi_disp_private *disp = (struct sunxi_drm_private *)sunxi_disp;
+	memset(&creq, 0, sizeof(struct drm_mode_create_dumb));
+	creq.width = width;
+	creq.height = height;
+	creq.bpp = BPP; // hard conding
 
-    uint32_t handles[4], pitches[4], offsets[4];
-    uint32_t handle = 0;
-    int ret = 0;
+	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) < 0)
+		fatal("drmIoctl DRM_IOCTL_MODE_CREATE_DUMB failed");
 
-    ret = drmPrimeFDToHandle(disp->fd,
-            os->vs->dma_fd, &handle);
-    if (ret < 0) {
-        VDPAU_ERR("Could not get handle");
-        os->vs->device->dsp_mode = NO_OVERLAY;
-    }
+    int pitch = width; //whatever.
 
-    handles[0] = handle;
-    pitches[0] = w;
-    offsets[0] = 0;
-    handles[1] = handle;
-    pitches[1] = w;
-    offsets[1] = w * h;
+	if (drmModeAddFB(disp->fd, width, height,
+		DEPTH, BPP, dev->pitch, dev->handle, &dev->fb_id))
+		fatal("drmModeAddFB failed");
 
-    ret = drmModeAddFB2(disp->fd, w, h,
-            DRM_FORMAT_NV12, handles, pitches, offsets,
-            &os->vs->fb_id, 0);
-    if (ret < 0) {
-        VDPAU_ERR("Could not add fb");
-        os->vs->device->dsp_mode = NO_OVERLAY;
-    }
+	memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
+	mreq.handle = dev->handle;
 
-    ret = drmModeSetPlane(disp->ctrl_fd, disp->plane_id,
-        r->crtcs[crtc - 1], fb_id, 0,
-        crtc_x, crtc_y, crtc_w, crtc_h,
-        0, 0, (src_w ? src_w : crtc_w) << 16,
-        (src_h ? src_h : crtc_h) << 16);
+	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
+		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
+
+	dev->buf = (uint32_t *) emmap(0, dev->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+
+	dev->saved_crtc = drmModeGetCrtc(disp->fd, dev->crtc_id); /* must store crtc data */
+	if (drmModeSetCrtc(disp->fd, dev->crtc_id, dev->fb_id, 0, 0, &dev->conn_id, 1, &dev->mode))
+fatal("drmModeSetCrtc() failed");
+
+    printf("done setting layer")
+
     return ret;
 }
 
