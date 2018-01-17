@@ -88,9 +88,10 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
      * get drm res for crtc
      */
     r = drmModeGetResources(drm_fd);
-    if (!r || !r->count_crtcs)
+    if (!r || !r->count_crtcs) {
         printf("DAVE :( %d\n", r);
         goto err_res;
+    }
 
     /**
      * find the last available crtc
