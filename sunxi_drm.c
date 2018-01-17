@@ -272,6 +272,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
+    printf("dumb buffer created");
+
 	disp->buf = (uint32_t *) emmap(0, disp->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
     int src_w= 0;
