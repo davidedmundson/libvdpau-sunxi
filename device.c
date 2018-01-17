@@ -56,6 +56,8 @@ VdpStatus vdp_imp_device_create_x11(Display *display,
 	else
 	{
 		VDPAU_DBG("OSD disabled!");
+        printf("all ok!!!");
+
 		return VDP_STATUS_OK;
 	}
 
