@@ -256,16 +256,17 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) < 0)
 		fatal("drmIoctl DRM_IOCTL_MODE_CREATE_DUMB failed");
 
-    int pitch = width; //whatever.
+    disp->pitch = creq.pitch;
+    disp->handle = creq.handle;
 
     int fb_id;
 
 	if (drmModeAddFB(disp->fd, width, height,
-		DEPTH, BPP, pitch, dev->handle, fb_id))
+		DEPTH, BPP, pitch, disp->handle, fb_id))
 		fatal("drmModeAddFB failed");
 
 	memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
-	mreq.handle = dev->handle;
+	mreq.handle = disp->handle;
 
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
@@ -284,8 +285,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     printf("done setting layer");
 
     return ret;
-}
-
 
 //
 // 	switch (surface->vs->source_format) {
