@@ -46,6 +46,11 @@ enum {
 	BPP = 32,
 };
 
+void fatal(char *str)
+{
+	fprintf(stderr, "%s\n", str);
+	exit(EXIT_FAILURE);
+}
 
 static void sunxi_disp_close(struct sunxi_disp *sunxi_disp);
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface);
@@ -205,6 +210,9 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
 {
+    struct sunxi_drm_private *disp = (struct sunxi_drm_private *)sunxi_disp;
+
+
     printf("setting layer\n");
     int ret;
     struct drm_mode_create_dumb creq;
@@ -234,7 +242,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 
 	dev->saved_crtc = drmModeGetCrtc(disp->fd, dev->crtc_id); /* must store crtc data */
 	if (drmModeSetCrtc(disp->fd, dev->crtc_id, dev->fb_id, 0, 0, &dev->conn_id, 1, &dev->mode))
-fatal("drmModeSetCrtc() failed");
+        fatal("drmModeSetCrtc() failed");
 
     printf("done setting layer")
 
