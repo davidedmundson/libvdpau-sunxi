@@ -34,5 +34,7 @@ struct sunxi_disp
 struct sunxi_disp *sunxi_disp_open(int osd_enabled);
 struct sunxi_disp *sunxi_disp2_open(int osd_enabled);
 struct sunxi_disp *sunxi_disp1_5_open(int osd_enabled);
+struct sunxi_disp *sunxi_drm_open(int osd_enabled);
+
 
 #endif
