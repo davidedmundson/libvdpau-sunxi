@@ -51,6 +51,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     #define DRM_CTL_PATH "/dev/dri/controlD64"
 //     #define DRM_CTL_PATH "/dev/dri/renderD128"
 
+    struct sunxi_disp_private *disp = calloc(1, sizeof(*disp));
+
     int drm_fd = open(DRM_PATH, O_RDWR);
     if (drm_fd <= 0) {
         printf("Could not open %s", DRM_PATH);
