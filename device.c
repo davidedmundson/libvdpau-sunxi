@@ -72,6 +72,8 @@ VdpStatus vdp_imp_device_create_x11(Display *display,
 	if (!dev->g2d_enabled)
 		VDPAU_DBG("OSD enabled, using pixman");
 
+
+    printf("all ok!!!");
 	return VDP_STATUS_OK;
 }
 
