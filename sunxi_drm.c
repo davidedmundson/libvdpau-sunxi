@@ -275,13 +275,13 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_w= 0;
     int src_h=0;
 
-    ret = drmModeSetPlane(dev->drm_ctl_fd, plane_id,
+    ret = drmModeSetPlane(dev->drm_ctl_fd, disp->plane_id,
             disp->ctrc_id, fb_id, 0,
             disp->crtc_x, disp->crtc_y, disp->crtc_w, disp->crtc_h,
             0, 0, (src_w ? src_w : disp->crtc_w) << 16,
             (src_h ? src_h : disp->crtc_h) << 16);
 
-    printf("done setting layer")
+    printf("done setting layer");
 
     return ret;
 }
