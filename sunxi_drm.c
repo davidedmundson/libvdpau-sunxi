@@ -35,6 +35,7 @@ struct sunxi_drm_private
 
 	int fd;
     int ctrl_fd;
+    int plane_id;
 	int video_layer;
 	int osd_layer;
 };
@@ -139,6 +140,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     if (!crtc || ! plane_id)
         goto err_overlay;
 
+    disp->plane_id = plane_id;
 //     if (!fullscreen)
 //     {
 //         /**
@@ -198,8 +200,43 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 {
     printf("setting layer\n");
 
+	struct sunxi_disp_private *disp = (struct sunxi_drm_private *)sunxi_disp;
 
-// 	struct sunxi_disp_private *disp = (struct sunxi_disp_private *)sunxi_disp;
+    uint32_t handles[4], pitches[4], offsets[4];
+    uint32_t handle = 0;
+    int ret = 0;
+
+    ret = drmPrimeFDToHandle(disp->fd,
+            os->vs->dma_fd, &handle);
+    if (ret < 0) {
+        VDPAU_ERR("Could not get handle");
+        os->vs->device->dsp_mode = NO_OVERLAY;
+    }
+
+    handles[0] = handle;
+    pitches[0] = w;
+    offsets[0] = 0;
+    handles[1] = handle;
+    pitches[1] = w;
+    offsets[1] = w * h;
+
+    ret = drmModeAddFB2(disp->fd, w, h,
+            DRM_FORMAT_NV12, handles, pitches, offsets,
+            &os->vs->fb_id, 0);
+    if (ret < 0) {
+        VDPAU_ERR("Could not add fb");
+        os->vs->device->dsp_mode = NO_OVERLAY;
+    }
+
+    ret = drmModeSetPlane(disp->ctrl_fd, disp->plane_id,
+        r->crtcs[crtc - 1], fb_id, 0,
+        crtc_x, crtc_y, crtc_w, crtc_h,
+        0, 0, (src_w ? src_w : crtc_w) << 16,
+        (src_h ? src_h : crtc_h) << 16);
+    return ret;
+}
+
+
 //
 // 	switch (surface->vs->source_format) {
 // 	case VDP_YCBCR_FORMAT_YUYV:
