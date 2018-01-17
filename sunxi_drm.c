@@ -196,6 +196,9 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
 {
+    printf("setting layer\n");
+
+
 // 	struct sunxi_disp_private *disp = (struct sunxi_disp_private *)sunxi_disp;
 //
 // 	switch (surface->vs->source_format) {
