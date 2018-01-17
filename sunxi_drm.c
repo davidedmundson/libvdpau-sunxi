@@ -147,9 +147,9 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     }
 
     disp->crtc_id = crtc;
-    disp->crtc_x = crtc_x;
+    disp->crtc_x = crtc_x = 100;
     disp->crtc_y = crtc_y;
-    disp->crtc_w = crtc_w;
+    disp->crtc_w = crtc_w - 100;
     disp->crtc_h = crtc_h;
 
 
