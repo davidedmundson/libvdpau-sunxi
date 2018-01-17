@@ -42,9 +42,9 @@ struct sunxi_drm_private
 	int osd_layer;
 
     uint32_t *buf; //dumb buffer, kill this sometime
+	uint32_t pitch, size, handle; //dumb buffer ID
 	uint32_t fb_id;
 // 	uint32_t width, height;
-	uint32_t pitch, size, handle;
 	drmModeModeInfo mode;
     //CRTC for if we go fullscreen
     int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
@@ -257,6 +257,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 		fatal("drmIoctl DRM_IOCTL_MODE_CREATE_DUMB failed");
 
     disp->pitch = creq.pitch;
+    disp->size = creq.size;
     disp->handle = creq.handle;
 
     int fb_id;
@@ -271,7 +272,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
-	disp->buf = (uint32_t *) emmap(0, dev->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+	disp->buf = (uint32_t *) emmap(0, disp->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
     int src_w= 0;
     int src_h=0;
