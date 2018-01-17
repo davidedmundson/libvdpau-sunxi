@@ -253,6 +253,10 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	creq.height = height;
 	creq.bpp = BPP; // hard conding
 
+
+    printf("about to do ioctl 1");
+
+
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) < 0)
 		fatal("drmIoctl DRM_IOCTL_MODE_CREATE_DUMB failed");
 
@@ -261,6 +265,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     disp->handle = creq.handle;
 
     int fb_id;
+
+    printf("about to do ioctl 2");
 
 	if (drmModeAddFB(disp->fd, width, height,
 		DEPTH, BPP, disp->pitch, disp->handle, fb_id))
