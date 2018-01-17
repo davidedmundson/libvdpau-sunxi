@@ -53,13 +53,13 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 
     struct sunxi_drm_private *disp = calloc(1, sizeof(*disp));
 
-    int drm_fd = open(DRM_PATH, O_RDWR);
-    if (drm_fd <= 0) {
+    int disp->fd = open(DRM_PATH, O_RDWR);
+    if (disp->fd <= 0) {
         printf("Could not open %s", DRM_PATH);
         return 0;
     }
-    int drm_ctl_fd = open(DRM_CTL_PATH, O_RDWR);
-    if (drm_ctl_fd <= 0) {
+    int disp->ctrl_fd = open(DRM_CTL_PATH, O_RDWR);
+    if (disp->ctrl_fd <= 0) {
         printf("Could not open %s", DRM_CTL_PATH);
         return 0;
     }
@@ -79,15 +79,15 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     /**
      * enable all planes
      */
-    drmSetClientCap(drm_fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+    drmSetClientCap(disp->fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
 #ifdef DRM_CLIENT_CAP_ATOMIC
-    drmSetClientCap(drm_fd, DRM_CLIENT_CAP_ATOMIC, 1);
+    drmSetClientCap(disp->fd, DRM_CLIENT_CAP_ATOMIC, 1);
 #endif
 
     /**
      * get drm res for crtc
      */
-    r = drmModeGetResources(drm_fd);
+    r = drmModeGetResources(disp->fd);
     if (!r || !r->count_crtcs) {
         printf("DAVE :( %d\n", r);
         goto err_res;
@@ -98,7 +98,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
      **/
     for (i = r->count_crtcs; i && !crtc; i --)
     {
-        drmModeCrtcPtr c = drmModeGetCrtc(drm_fd, r->crtcs[i - 1]);
+        drmModeCrtcPtr c = drmModeGetCrtc(disp->fd, r->crtcs[i - 1]);
         if (c && c->mode_valid)
         {
             crtc = i;
@@ -113,7 +113,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     /**
      * get plane res for plane
      */
-    pr = drmModeGetPlaneResources(drm_fd);
+    pr = drmModeGetPlaneResources(disp->fd);
     if (!pr || !pr->count_planes)
         goto err_plane_res;
 
@@ -122,7 +122,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
      */
     for (i = 0; i < pr->count_planes; i++)
     {
-        drmModePlanePtr p = drmModeGetPlane(drm_fd, pr->planes[i]);
+        drmModePlanePtr p = drmModeGetPlane(disp->fd, pr->planes[i]);
         if (p && p->possible_crtcs == crtc)
             for (j = 0; j < p->count_formats && !plane_id; j++)
                 if (p->formats[j] == DRM_FORMAT_NV12)
@@ -155,7 +155,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 //                 clip_w, clip_h, &crtc_w, &crtc_h, &win);
 //     }
 
-//     ret = drmModeSetPlane(drm_ctl_fd, plane_id,
+//     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
 //             r->crtcs[crtc - 1], fb_id, 0,
 //             crtc_x, crtc_y, crtc_w, crtc_h,
 //             0, 0, (src_w ? src_w : crtc_w) << 16,
@@ -166,7 +166,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 //         dev->saved_fb = old_fb;
 //         printf ("store fb:%d", old_fb);
 //     } else {
-//         drmModeRmFB(dev->drm_ctl_fd, old_fb);
+//         drmModeRmFB(dev->disp->ctrl_fd, old_fb);
 //     }
 
     disp->pub.close = sunxi_disp_close;
