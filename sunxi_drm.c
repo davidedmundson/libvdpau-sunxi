@@ -184,7 +184,7 @@ err_plane_res:
     printf("err2");
     drmModeFreeResources(r);
 err_res:
-    printf("err3");
+    printf("err3.1\n");
     return 0;
 }
 
