@@ -285,6 +285,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_w= 0;
     int src_h=0;
 
+    printf("about to do ioctl3");
+
     ret = drmModeSetPlane(disp->ctrl_fd, disp->plane_id,
             disp->crtc_id, fb_id, 0,
             disp->crtc_x, disp->crtc_y, disp->crtc_w, disp->crtc_h,
