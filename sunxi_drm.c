@@ -30,6 +30,7 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <libdrm/drm_fourcc.h>
+#include <memory.h>
 
 struct sunxi_drm_private
 {
@@ -49,6 +50,7 @@ struct sunxi_drm_private
     //CRTC for if we go fullscreen
     int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
 struct drm_dev_t *next;
+    drmModeCrtcPtr crtcXX;
 
 
 };
@@ -64,7 +66,7 @@ void fatal(char *str)
 	fprintf(stderr, "%s\n", str);
 	exit(EXIT_FAILURE);
 }
-
+// // 
 
 void *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
 {
@@ -100,6 +102,35 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
         return 0;
     }
 
+    disp->pub.close = sunxi_disp_close;
+	disp->pub.set_video_layer = sunxi_disp_set_video_layer;
+	disp->pub.close_video_layer = sunxi_disp_close_video_layer;
+	disp->pub.set_osd_layer = sunxi_disp_set_osd_layer;
+	disp->pub.close_osd_layer = sunxi_disp_close_osd_layer;
+    disp->buf = 0;
+	return (struct sunxi_disp *)disp;
+
+
+err_overlay:
+    printf("err1");
+//     drmModeFreePlaneResources(pr);
+err_plane_res:
+    printf("err2");
+//     drmModeFreeResources(r);
+err_res:
+    printf("err3.1\n");
+    return 0;
+}
+
+static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
+{
+
+}
+
+static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
+{
+    struct sunxi_drm_private *disp = (struct sunxi_drm_private *)sunxi_disp;
+    
     drmModeResPtr r;
     drmModePlaneResPtr pr;
 
@@ -110,16 +141,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     int plane_id = 0;
     int crtc = 0;
 
-//     Window win;
-
-    /**
-     * enable all planes
-     */
-    drmSetClientCap(disp->fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
-#ifdef DRM_CLIENT_CAP_ATOMIC
-    drmSetClientCap(disp->fd, DRM_CLIENT_CAP_ATOMIC, 1);
-#endif
-
+    
+    
     /**
      * get drm res for crtc
      */
@@ -132,6 +155,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     /**
      * find the last available crtc
      **/
+    
     for (i = r->count_crtcs; i && !crtc; i --)
     {
         drmModeCrtcPtr c = drmModeGetCrtc(disp->fd, r->crtcs[i - 1]);
@@ -143,15 +167,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
             crtc_w = c->width;
             crtc_h = c->height;
         }
-        drmModeFreeCrtc(c);
+//         drmModeFreeCrtc(c);
     }
-
-    disp->crtc_id = crtc;
-    disp->crtc_x = crtc_x = 100;
-    disp->crtc_y = crtc_y;
-    disp->crtc_w = crtc_w - 100;
-    disp->crtc_h = crtc_h;
-
 
     /**
      * get plane res for plane
@@ -175,6 +192,10 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
                 }
         drmModeFreePlane(p);
     }
+    
+    
+    plane_id=20;//because reasons! don't ask
+    printf("plane ID is %d", plane_id);
 
     /**
      * failed to get crtc or plane
@@ -182,7 +203,6 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     if (!crtc || ! plane_id)
         goto err_overlay;
 
-    disp->plane_id = plane_id;
 //     if (!fullscreen)
 //     {
 //         /**
@@ -198,107 +218,83 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 //                 RootWindow(dev->display, dev->screen),
 //                 clip_w, clip_h, &crtc_w, &crtc_h, &win);
 //     }
+    printf("so far so good!\n");
+    
+	struct drm_mode_create_dumb create_request = {
+		.width  = 400,
+		.height = 400,
+		.bpp    = 32,
+        .flags  = 3 //contig, cachable
+	};
+	ret = ioctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_request);
+    if (ret)
+        printf("FAIL %d\n", ret);
+    
+    
+    int frame_buffer_id;
+    ret = drmModeAddFB(
+		disp->fd,
+		400, 400,
+		24, 32, create_request.pitch,
+		create_request.handle, &frame_buffer_id
+	);
+    if (ret)
+        printf("FAIL %d\n", ret);
+    
+    
+    
+    struct drm_mode_map_dumb mreq;
+    memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
+	mreq.handle = create_request.handle;
+        
+	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
+		printf("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
-//     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
-//             r->crtcs[crtc - 1], fb_id, 0,
-//             crtc_x, crtc_y, crtc_w, crtc_h,
-//             0, 0, (src_w ? src_w : crtc_w) << 16,
-//             (src_h ? src_h : crtc_h) << 16);
+    
+	uint32_t* buf = (uint32_t *) emmap(0, create_request.size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+
+//     int src_w= 0;
+//     int src_h=0;
+
+    memset(buf, 0x80, create_request.size); //paint it grey
+    
+    ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
+            r->crtcs[crtc - 1], frame_buffer_id, 0,
+            500, 200, 400, 400,
+            0 << 16, 0<< 16, 200<< 16,
+            200<< 16);   
+    
+    printf("done!\n");
+    
+/*
+    ret = drmModeSetPlane(, plane_id,
+            r->crtcs[crtc - 1], fb_id, 0,
+            crtc_x, crtc_y, crtc_w, crtc_h,
+            0, 0, (src_w ? src_w : crtc_w) << 16,
+            (src_h ? src_h : crtc_h) << 16);*/
 
 //     if (dev->saved_fb < 0)
 //     {
 //         dev->saved_fb = old_fb;
 //         printf ("store fb:%d", old_fb);
 //     } else {
-//         drmModeRmFB(dev->disp->ctrl_fd, old_fb);
+//         drmModeRmFB(dev->, old_fb);
 //     }
 
-    disp->pub.close = sunxi_disp_close;
-	disp->pub.set_video_layer = sunxi_disp_set_video_layer;
-	disp->pub.close_video_layer = sunxi_disp_close_video_layer;
-	disp->pub.set_osd_layer = sunxi_disp_set_osd_layer;
-	disp->pub.close_osd_layer = sunxi_disp_close_osd_layer;
-
-	return (struct sunxi_disp *)disp;
+    return 0;
 
 
 err_overlay:
     printf("err1");
-    drmModeFreePlaneResources(pr);
+//     drmModeFreePlaneResources(pr);
 err_plane_res:
     printf("err2");
-    drmModeFreeResources(r);
+//     drmModeFreeResources(r);
 err_res:
-    printf("err3.1\n");
+    printf("failed to drmModeGetResources\n");
     return 0;
-}
 
-static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
-{
-
-}
-
-static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
-{
-    struct sunxi_drm_private *disp = (struct sunxi_drm_private *)sunxi_disp;
-
-
-    printf("setting layer NG\n");
-    int ret;
-    struct drm_mode_create_dumb creq;
-	struct drm_mode_map_dumb mreq;
-
-	memset(&creq, 0, sizeof(struct drm_mode_create_dumb));
-	creq.width = width;
-	creq.height = height;
-	creq.bpp = BPP; // hard conding
-
-
-    printf("about to do ioctl 1\n");
-
-
-	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) < 0)
-		fatal("drmIoctl DRM_IOCTL_MODE_CREATE_DUMB failed");
-
-    disp->pitch = creq.pitch;
-    disp->size = creq.size;
-    disp->handle = creq.handle;
-
-    int fb_id;
-
-    printf("about to do ioctl 2\n");
-
-	if (drmModeAddFB(disp->fd, width, height,
-		DEPTH, BPP, disp->pitch, disp->handle, fb_id))
-		fatal("drmModeAddFB failed");
-
-	memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
-	mreq.handle = disp->handle;
-
-	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
-		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
-
-    printf("dumb buffer created\n");
-
-	disp->buf = (uint32_t *) emmap(0, disp->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
-
-    int src_w= 0;
-    int src_h=0;
-
-    memset(disp->buf, 0x77, disp->size);
-
-    printf("about to do ioctl3\n");
-
-    ret = drmModeSetPlane(disp->ctrl_fd, disp->plane_id,
-            disp->crtc_id, fb_id, 0,
-            disp->crtc_x, disp->crtc_y, disp->crtc_w, disp->crtc_h,
-            0, 0, (src_w ? src_w : disp->crtc_w) << 16,
-            (src_h ? src_h : disp->crtc_h) << 16);
-
-    printf("done setting layer\n");
-
-    return ret;
-
+    
 //
 // 	switch (surface->vs->source_format) {
 // 	case VDP_YCBCR_FORMAT_YUYV:
