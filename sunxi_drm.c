@@ -46,7 +46,8 @@ struct sunxi_drm_private
 // 	uint32_t width, height;
 	uint32_t pitch, size, handle;
 	drmModeModeInfo mode;
-	drmModeCrtc *saved_crtc;
+    //CRTC for if we go fullscreen
+    int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
 struct drm_dev_t *next;
 
 
@@ -142,9 +143,15 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
             crtc_w = c->width;
             crtc_h = c->height;
         }
-        disp->saved_crtc = c;
-//         drmModeFreeCrtc(c);
+        drmModeFreeCrtc(c);
     }
+
+    disp->crtc_id = crtc;
+    disp->crtc_x = crtc_x;
+    disp->crtc_y = crtc_y;
+    disp->crtc_width = crtc_width;
+    disp->crtc_height = crtc_height;
+
 
     /**
      * get plane res for plane
@@ -265,11 +272,14 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 
 	dev->buf = (uint32_t *) emmap(0, dev->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
+    int src_w= 0;
+    int src_h=0;
+
     ret = drmModeSetPlane(dev->drm_ctl_fd, plane_id,
-            r->crtcs[crtc - 1], fb_id, 0,
-            crtc_x, crtc_y, crtc_w, crtc_h,
-            0, 0, (src_w ? src_w : crtc_w) << 16,
-            (src_h ? src_h : crtc_h) << 16);
+            disp->ctrc_id, fb_id, 0,
+            disp->crtc_x, disp->crtc_y, disp->crtc_w, disp->crtc_h,
+            0, 0, (src_w ? src_w : disp->crtc_w) << 16,
+            (src_h ? src_h : disp->crtc_h) << 16);
 
     printf("done setting layer")
 
