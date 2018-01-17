@@ -24,7 +24,9 @@
 #include <sys/ioctl.h>
 #include "vdpau_private.h"
 #include "sunxi_disp.h"
-
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <libdrm/drm_fourcc.h>
@@ -38,6 +40,16 @@ struct sunxi_drm_private
     int plane_id;
 	int video_layer;
 	int osd_layer;
+
+    uint32_t *buf; //dumb buffer, kill this sometime
+	uint32_t fb_id;
+// 	uint32_t width, height;
+	uint32_t pitch, size, handle;
+	drmModeModeInfo mode;
+	drmModeCrtc *saved_crtc;
+struct drm_dev_t *next;
+
+
 };
 
 
@@ -50,6 +62,16 @@ void fatal(char *str)
 {
 	fprintf(stderr, "%s\n", str);
 	exit(EXIT_FAILURE);
+}
+
+
+void *emmap(int addr, size_t len, int prot, int flag, int fd, off_t offset)
+{
+	uint32_t *fp;
+
+	if ((fp = (uint32_t *) mmap(0, len, prot, flag, fd, offset)) == MAP_FAILED)
+		error("mmap");
+	return fp;
 }
 
 static void sunxi_disp_close(struct sunxi_disp *sunxi_disp);
@@ -120,7 +142,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
             crtc_w = c->width;
             crtc_h = c->height;
         }
-        drmModeFreeCrtc(c);
+        disp->saved_crtc = c;
+//         drmModeFreeCrtc(c);
     }
 
     /**
@@ -228,8 +251,10 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 
     int pitch = width; //whatever.
 
+    int fb_id;
+
 	if (drmModeAddFB(disp->fd, width, height,
-		DEPTH, BPP, dev->pitch, dev->handle, &dev->fb_id))
+		DEPTH, BPP, pitch, dev->handle, fb_id))
 		fatal("drmModeAddFB failed");
 
 	memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
@@ -240,9 +265,11 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 
 	dev->buf = (uint32_t *) emmap(0, dev->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
-	dev->saved_crtc = drmModeGetCrtc(disp->fd, dev->crtc_id); /* must store crtc data */
-	if (drmModeSetCrtc(disp->fd, dev->crtc_id, dev->fb_id, 0, 0, &dev->conn_id, 1, &dev->mode))
-        fatal("drmModeSetCrtc() failed");
+    ret = drmModeSetPlane(dev->drm_ctl_fd, plane_id,
+            r->crtcs[crtc - 1], fb_id, 0,
+            crtc_x, crtc_y, crtc_w, crtc_h,
+            0, 0, (src_w ? src_w : crtc_w) << 16,
+            (src_h ? src_h : crtc_h) << 16);
 
     printf("done setting layer")
 
