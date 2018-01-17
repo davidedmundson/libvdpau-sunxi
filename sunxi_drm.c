@@ -271,13 +271,13 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
-	dev->buf = (uint32_t *) emmap(0, dev->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+	disp->buf = (uint32_t *) emmap(0, dev->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
     int src_w= 0;
     int src_h=0;
 
-    ret = drmModeSetPlane(dev->drm_ctl_fd, disp->plane_id,
-            disp->ctrc_id, fb_id, 0,
+    ret = drmModeSetPlane(disp->drm_ctl_fd, disp->plane_id,
+            disp->crtc_id, fb_id, 0,
             disp->crtc_x, disp->crtc_y, disp->crtc_w, disp->crtc_h,
             0, 0, (src_w ? src_w : disp->crtc_w) << 16,
             (src_h ? src_h : disp->crtc_h) << 16);
