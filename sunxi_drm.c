@@ -27,6 +27,7 @@
 
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+#include <libdrm/drm_fourcc.h>
 
 struct sunxi_drm_private
 {
@@ -164,6 +165,16 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 //     } else {
 //         drmModeRmFB(dev->drm_ctl_fd, old_fb);
 //     }
+
+    disp->pub.close = sunxi_disp_close;
+	disp->pub.set_video_layer = sunxi_disp_set_video_layer;
+	disp->pub.close_video_layer = sunxi_disp_close_video_layer;
+	disp->pub.set_osd_layer = sunxi_disp_set_osd_layer;
+	disp->pub.close_osd_layer = sunxi_disp_close_osd_layer;
+
+	return (struct sunxi_disp *)disp;
+
+
 err_overlay:
     printf("err1");
     drmModeFreePlaneResources(pr);
