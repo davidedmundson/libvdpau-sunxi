@@ -149,8 +149,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     disp->crtc_id = crtc;
     disp->crtc_x = crtc_x;
     disp->crtc_y = crtc_y;
-    disp->crtc_width = crtc_width;
-    disp->crtc_height = crtc_height;
+    disp->crtc_w = crtc_w;
+    disp->crtc_h = crtc_h;
 
 
     /**
@@ -263,7 +263,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int fb_id;
 
 	if (drmModeAddFB(disp->fd, width, height,
-		DEPTH, BPP, pitch, disp->handle, fb_id))
+		DEPTH, BPP, disp->pitch, disp->handle, fb_id))
 		fatal("drmModeAddFB failed");
 
 	memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
@@ -277,7 +277,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_w= 0;
     int src_h=0;
 
-    ret = drmModeSetPlane(disp->drm_ctl_fd, disp->plane_id,
+    ret = drmModeSetPlane(disp->ctrl_fd, disp->plane_id,
             disp->crtc_id, fb_id, 0,
             disp->crtc_x, disp->crtc_y, disp->crtc_w, disp->crtc_h,
             0, 0, (src_w ? src_w : disp->crtc_w) << 16,
