@@ -278,14 +278,14 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		fatal("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
-    printf("dumb buffer created");
+    printf("dumb buffer created\n");
 
 	disp->buf = (uint32_t *) emmap(0, disp->size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
     int src_w= 0;
     int src_h=0;
 
-    printf("about to do ioctl3");
+    printf("about to do ioctl3\n");
 
     ret = drmModeSetPlane(disp->ctrl_fd, disp->plane_id,
             disp->crtc_id, fb_id, 0,
@@ -293,7 +293,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
             0, 0, (src_w ? src_w : disp->crtc_w) << 16,
             (src_h ? src_h : disp->crtc_h) << 16);
 
-    printf("done setting layer");
+    printf("done setting layer\n");
 
     return ret;
 
