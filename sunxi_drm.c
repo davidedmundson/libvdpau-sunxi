@@ -140,8 +140,11 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int i, j;
     int plane_id = 0;
     int crtc = 0;
-
-    
+   
+//     if (width < 1 || height <1 ) {
+//         return 0;
+//     }
+//     
     
     /**
      * get drm res for crtc
@@ -221,8 +224,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     printf("so far so good!\n");
     
 	struct drm_mode_create_dumb create_request = {
-		.width  = 400,
-		.height = 400,
+		.width  = surface->vs->width,
+		.height = surface->vs->height,
 		.bpp    = 32,
         .flags  = 3 //contig, cachable
 	};
@@ -234,15 +237,13 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int frame_buffer_id;
     ret = drmModeAddFB(
 		disp->fd,
-		400, 400,
+		create_request.width, create_request.height,
 		24, 32, create_request.pitch,
 		create_request.handle, &frame_buffer_id
 	);
     if (ret)
         printf("FAIL %d\n", ret);
-    
-    
-    
+
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
 	mreq.handle = create_request.handle;
@@ -257,30 +258,16 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 //     int src_h=0;
 
     memset(buf, 0x80, create_request.size); //paint it grey
+//     memcpy(buf, cedrus_mem_get_phys_addr(surface->yuv->data), 50);
     
     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
             r->crtcs[crtc - 1], frame_buffer_id, 0,
-            500, 200, 400, 400,
-            0 << 16, 0<< 16, 200<< 16,
-            200<< 16);   
+            x, y, width, height,
+            0 << 16, 0<< 16, 200 << 16,
+            200 << 16);   
     
-    printf("done!\n");
+    printf("done %d %d!\n", x, y);
     
-/*
-    ret = drmModeSetPlane(, plane_id,
-            r->crtcs[crtc - 1], fb_id, 0,
-            crtc_x, crtc_y, crtc_w, crtc_h,
-            0, 0, (src_w ? src_w : crtc_w) << 16,
-            (src_h ? src_h : crtc_h) << 16);*/
-
-//     if (dev->saved_fb < 0)
-//     {
-//         dev->saved_fb = old_fb;
-//         printf ("store fb:%d", old_fb);
-//     } else {
-//         drmModeRmFB(dev->, old_fb);
-//     }
-
     return 0;
 
 
