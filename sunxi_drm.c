@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2015 Jens Kuske <jenskuske@gmail.com>
+ * Copyright (c) 2018 David Edmundson <davidedmundson@kde.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,6 +32,7 @@
 #include <xf86drmMode.h>
 #include <libdrm/drm_fourcc.h>
 #include <memory.h>
+#include "buffers.h"
 
 struct sunxi_drm_private
 {
@@ -49,10 +51,8 @@ struct sunxi_drm_private
 	drmModeModeInfo mode;
     //CRTC for if we go fullscreen
     int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
-struct drm_dev_t *next;
+    struct drm_dev_t *next;
     drmModeCrtcPtr crtcXX;
-
-
 };
 
 
@@ -222,51 +222,70 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 //                 clip_w, clip_h, &crtc_w, &crtc_h, &win);
 //     }
     printf("so far so good!\n");
-    
-	struct drm_mode_create_dumb create_request = {
-		.width  = surface->vs->width,
-		.height = surface->vs->height,
-		.bpp    = 32,
-        .flags  = 3 //contig, cachable
-	};
-	ret = ioctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_request);
-    if (ret)
-        printf("FAIL %d\n", ret);
-    
-    
+ 
+    uint32_t buffer_bo_handles[4] = {0};
+    uint32_t buffer_pitches[4] = {0};
+    uint32_t buffer_offsets[4] = {0};
+//     uint32_t buffer_sizes[4];
     int frame_buffer_id;
-    ret = drmModeAddFB(
+
+    int src_width = width;
+    int src_height = height;
+
+//     void *data[4] = {0};
+//     uint32_t sizes[4] = {0};
+//     data[0] = cedrus_mem_get_phys_addr(surface->yuv->data);
+//     sizes[0] = 200; //TODO surface->vs->luma_size, but we need to make our source size match first
+//     sizes[1] = 200;
+//     sizes[2] = 200;
+//     
+    
+//     printf("First byte is %d", ((uint32_t**)data[0])[0]);
+     
+     /*
+    data[1] = cedrus_mem_get_phys_addr(surface->yuv->data) + surface->vs->luma_size;
+	data[2] = cedrus_mem_get_phys_addr(surface->yuv->data) + surface->vs->luma_size + surface->vs->chroma_size / 2;
+    */
+//      return 0;
+
+    struct bo* bo = bo_create(disp->fd, DRM_FORMAT_RGBX8888, src_width, src_height,
+                              buffer_bo_handles, buffer_pitches, buffer_offsets, 
+                              PATTERN_SMPTE);
+    /*
+    struct bo* bo = bo_create2(disp->fd, DRM_FORMAT_RGBX8888, src_width, src_height,
+                              buffer_bo_handles, buffer_pitches, buffer_offsets, 
+                              data, sizes);
+    */
+    
+    if (!bo) {
+        printf("No bo :(");
+        return ;
+    } else {
+        printf("Bo ya!\n");
+    }
+    
+    printf("BO CREATED\n");
+    ret = drmModeAddFB2(
 		disp->fd,
-		create_request.width, create_request.height,
-		24, 32, create_request.pitch,
-		create_request.handle, &frame_buffer_id
+		src_width, src_height, DRM_FORMAT_RGBX8888, buffer_bo_handles,
+		buffer_pitches, buffer_offsets, &frame_buffer_id, 0
 	);
-    if (ret)
-        printf("FAIL %d\n", ret);
+    if (ret) {
+        printf("FAIL at add fb2 %d\n", ret);
+        return 0;
+    }
 
-    struct drm_mode_map_dumb mreq;
-    memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
-	mreq.handle = create_request.handle;
-        
-	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
-		printf("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
+    printf("setting plane");
 
-    
-	uint32_t* buf = (uint32_t *) emmap(0, create_request.size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
-
-//     int src_w= 0;
-//     int src_h=0;
-
-    memset(buf, 0x80, create_request.size); //paint it grey
-//     memcpy(buf, cedrus_mem_get_phys_addr(surface->yuv->data), 50);
-    
     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
             r->crtcs[crtc - 1], frame_buffer_id, 0,
             x, y, width, height,
-            0 << 16, 0<< 16, 200 << 16,
-            200 << 16);   
+            0 << 16, 0<< 16, src_width<< 16,
+            src_height<< 16);   
     
     printf("done %d %d!\n", x, y);
+    
+    bo_destroy(bo);
     
     return 0;
 
