@@ -227,35 +227,32 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     uint32_t buffer_pitches[4] = {0};
     uint32_t buffer_offsets[4] = {0};
 //     uint32_t buffer_sizes[4];
-    int frame_buffer_id;
+    uint32_t frame_buffer_id;
 
-    int src_width = width;
-    int src_height = height;
+    int src_width = surface->vs->width;
+    int src_height = surface->vs->height;
 
-//     void *data[4] = {0};
-//     uint32_t sizes[4] = {0};
-//     data[0] = cedrus_mem_get_phys_addr(surface->yuv->data);
-//     sizes[0] = 200; //TODO surface->vs->luma_size, but we need to make our source size match first
-//     sizes[1] = 200;
-//     sizes[2] = 200;
+    void *data[4] = {0};
+    uint32_t sizes[4] = {0};
+    data[0] = cedrus_mem_get_pointer(surface->yuv->data);
+    sizes[0] = surface->vs->luma_size;
+    data[1] = cedrus_mem_get_pointer(surface->yuv->data) + 0;//sizes[0];
+    sizes[1] = 0;//surface->vs->luma_size;//surface->vs->chroma_size / 2;
+    data[2] = cedrus_mem_get_pointer(surface->yuv->data) + 0;//sizes[0] + sizes[1];
+    sizes[2] = 0;//surface->vs->luma_size;//surface->vs->chroma_size / 2;
+    
+    int format = DRM_FORMAT_RGBX8888;
+
+//     struct bo* bo = bo_create(disp->fd, format, src_width, src_height,
+//                               buffer_bo_handles, buffer_pitches, buffer_offsets, 
+//                               PATTERN_SMPTE);
 //     
     
-//     printf("First byte is %d", ((uint32_t**)data[0])[0]);
-     
-     /*
-    data[1] = cedrus_mem_get_phys_addr(surface->yuv->data) + surface->vs->luma_size;
-	data[2] = cedrus_mem_get_phys_addr(surface->yuv->data) + surface->vs->luma_size + surface->vs->chroma_size / 2;
-    */
-//      return 0;
-
-    struct bo* bo = bo_create(disp->fd, DRM_FORMAT_RGBX8888, src_width, src_height,
-                              buffer_bo_handles, buffer_pitches, buffer_offsets, 
-                              PATTERN_SMPTE);
-    /*
-    struct bo* bo = bo_create2(disp->fd, DRM_FORMAT_RGBX8888, src_width, src_height,
+    printf("DAVE source format is %d", surface->vs->source_format);
+    
+    struct bo* bo = bo_create2(disp->fd, format, src_width, src_height,
                               buffer_bo_handles, buffer_pitches, buffer_offsets, 
                               data, sizes);
-    */
     
     if (!bo) {
         printf("No bo :(");
@@ -267,7 +264,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     printf("BO CREATED\n");
     ret = drmModeAddFB2(
 		disp->fd,
-		src_width, src_height, DRM_FORMAT_RGBX8888, buffer_bo_handles,
+		src_width, src_height, format, buffer_bo_handles,
 		buffer_pitches, buffer_offsets, &frame_buffer_id, 0
 	);
     if (ret) {
@@ -286,6 +283,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     printf("done %d %d!\n", x, y);
     
     bo_destroy(bo);
+    drmModeRmFB(disp->fd, frame_buffer_id);
     
     return 0;
 

@@ -1485,10 +1485,9 @@ bo_create2(int fd, unsigned int format,
 		break;
 	}
 
-	printf("Copying from %d\n", data[0]);
-	memcpy(data[0], planes[0], size[0]);
-//     memcpy(planes[1], data[1], size[1]);
-//     memcpy(planes[2], data[2], size[2]);
+	memcpy(planes[0], data[0], size[0]);
+    memcpy(planes[1], data[1], size[1]);
+    memcpy(planes[2], data[2], size[2]);
     
 	bo_unmap(bo);
 
