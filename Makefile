@@ -2,10 +2,10 @@ TARGET = libvdpau_sunxi.so.1
 SRC = device.c presentation_queue.c surface_output.c surface_video.c \
 	surface_bitmap.c video_mixer.c decoder.c handles.c \
 	h264.c mpeg12.c mpeg4.c rgba.c tiled_yuv.S h265.c sunxi_disp.c \
-	sunxi_disp2.c sunxi_disp1_5.c rgba_g2d.c rgba_pixman.c sunxi_drm.c buffers.c
-CFLAGS ?= -Wall -O3 -I/usr/include/libdrm
+	sunxi_disp2.c sunxi_disp1_5.c rgba_g2d.c rgba_pixman.c sunxi_drm.c 
+CFLAGS ?= -Wall -O3 
 LDFLAGS ?=
-LIBS = -lrt -lm -lX11 -lpthread -lcedrus -ldrm
+LIBS = -lrt -lm -lX11 -lpthread -lcedrus -lEGL -lGLESv2
 CC ?= gcc
 
 CFLAGS += $(shell pkg-config --cflags pixman-1)
