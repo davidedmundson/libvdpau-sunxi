@@ -219,10 +219,14 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 //                 clip_w, clip_h, &crtc_w, &crtc_h, &win);
 //     }
     printf("so far so good!\n");
+
+
+    int src_w = 400;
+    int src_h = 400;
     
 	struct drm_mode_create_dumb create_request = {
-		.width  = 400,
-		.height = 400,
+		.width  = src_w,
+		.height = src_h,
 		.bpp    = 32,
         .flags  = 3 //contig, cachable
 	};
@@ -234,7 +238,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int frame_buffer_id;
     ret = drmModeAddFB(
 		disp->fd,
-		400, 400,
+		src_w, src_h,
 		24, 32, create_request.pitch,
 		create_request.handle, &frame_buffer_id
 	);
@@ -253,34 +257,19 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     
 	uint32_t* buf = (uint32_t *) emmap(0, create_request.size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
-//     int src_w= 0;
-//     int src_h=0;
-
     memset(buf, 0x80, create_request.size); //paint it grey
+    memcpy(buf, cedrus_mem_get_pointer(surface->yuv->data), create_request.size);
     
     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
             r->crtcs[crtc - 1], frame_buffer_id, 0,
-            500, 200, 400, 400,
-            0 << 16, 0<< 16, 200<< 16,
-            200<< 16);   
+            x, y, width, height,
+            0 << 16, 0<< 16, src_w<< 16,
+            src_h<< 16);   
+    
+    drmModeRmFB(disp->fd, frame_buffer_id);
     
     printf("done!\n");
     
-/*
-    ret = drmModeSetPlane(, plane_id,
-            r->crtcs[crtc - 1], fb_id, 0,
-            crtc_x, crtc_y, crtc_w, crtc_h,
-            0, 0, (src_w ? src_w : crtc_w) << 16,
-            (src_h ? src_h : crtc_h) << 16);*/
-
-//     if (dev->saved_fb < 0)
-//     {
-//         dev->saved_fb = old_fb;
-//         printf ("store fb:%d", old_fb);
-//     } else {
-//         drmModeRmFB(dev->, old_fb);
-//     }
-
     return 0;
 
 
