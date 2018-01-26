@@ -274,24 +274,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
    //// get identifiers for the provided atom name strings
    Atom wm_state   = XInternAtom ( x_display, "_NET_WM_STATE", False );
 //    Atom fullscreen = XInternAtom ( x_display, "_NET_WM_STATE_FULLSCREEN", False );
- 
-//    XEvent xev;
-//    memset ( &xev, 0, sizeof(xev) );
-//  
-//    xev.type                 = ClientMessage;
-//    xev.xclient.window       = win;
-//    xev.xclient.message_type = wm_state;
-//    xev.xclient.format       = 32;
-//    xev.xclient.data.l[0]    = 1;
-//    xev.xclient.data.l[1]    = fullscreen;
-//    XSendEvent (                // send an event mask to the X-server
-//       x_display,
-//       DefaultRootWindow ( x_display ),
-//       False,
-//       SubstructureNotifyMask,
-//       &xev );
- 
- 
+  
    ///////  the egl part  //////////////////////////////////////////////////////////////////
    //  egl provides an interface to connect the graphics related functionality of openGL ES
    //  with the windowing interface and functionality of the native operation system (X11
@@ -376,7 +359,7 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 
 static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 {
-    eglDestroyContext ( egl_display, egl_context );
+   eglDestroyContext ( egl_display, egl_context );
    eglDestroySurface ( egl_display, egl_surface );
    eglTerminate      ( egl_display );
    XDestroyWindow    ( x_display, win );
@@ -394,7 +377,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     data[2] = cedrus_mem_get_pointer(surface->yuv->data) + sizes[0] + sizes[1];
     sizes[2] = surface->vs->chroma_size / 2;*/
         printf("frame\n");
-    render();
+        render();
     return 0;
 }
 
