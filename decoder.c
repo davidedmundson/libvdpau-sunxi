@@ -22,7 +22,6 @@
 #include <errno.h>
 
 #include "vdpau_private.h"
-#include "h264_decoder.h"
 
 VdpStatus vdp_decoder_create(VdpDevice device,
                              VdpDecoderProfile profile,
@@ -52,7 +51,7 @@ VdpStatus vdp_decoder_create(VdpDevice device,
         case VDP_DECODER_PROFILE_H264_BASELINE:
         case VDP_DECODER_PROFILE_H264_MAIN:
         case VDP_DECODER_PROFILE_H264_HIGH:
-            dec->private = h264_init(dec);
+//             dec->private = h264_init(dec);
             break;
 
         default:
