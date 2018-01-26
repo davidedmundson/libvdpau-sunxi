@@ -1032,7 +1032,7 @@ bo_create_dumb(int fd, unsigned int width, unsigned int height, unsigned int bpp
 	arg.bpp = bpp;
 	arg.width = width;
 	arg.height = height;
-	arg.flags = 3; //contiguous
+	arg.flags = 3; //contiguous and cachable
 
 	ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &arg);
 	if (ret) {
@@ -1485,9 +1485,13 @@ bo_create2(int fd, unsigned int format,
 		break;
 	}
 
-	memcpy(planes[0], data[0], size[0]);
-    memcpy(planes[1], data[1], size[1]);
-    memcpy(planes[2], data[2], size[2]);
+	printf("Dave wants to copy %d bytes\n", size[0] + size[1] + size[2]);
+    printf("size is %d\n", bo->size);
+    
+	
+	memcpy(planes[0], data[0], bo->size);
+//     memcpy(planes[1], data[1], size[1]);
+//     memcpy(planes[2], data[2], size[2]);
     
 	bo_unmap(bo);
 

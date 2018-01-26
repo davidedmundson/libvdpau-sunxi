@@ -188,7 +188,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
         drmModePlanePtr p = drmModeGetPlane(disp->fd, pr->planes[i]);
         if (p && p->possible_crtcs == crtc)
             for (j = 0; j < p->count_formats && !plane_id; j++)
-                if (p->formats[j] == DRM_FORMAT_NV12)
+                if (p->formats[j] == DRM_FORMAT_YVU420)
                 {
                     plane_id = pr->planes[i];
 //                     old_fb = p->fb_id;
@@ -197,7 +197,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     }
     
     
-    plane_id=20;//because reasons! don't ask
+    plane_id = 20;//because reasons! don't ask
     printf("plane ID is %d", plane_id);
 
     /**
@@ -232,28 +232,32 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_width = surface->vs->width;
     int src_height = surface->vs->height;
 
+    printf("source size %d x %d", src_width, src_height);
+        
     void *data[4] = {0};
     uint32_t sizes[4] = {0};
+    
+    
     data[0] = cedrus_mem_get_pointer(surface->yuv->data);
     sizes[0] = surface->vs->luma_size;
-    data[1] = cedrus_mem_get_pointer(surface->yuv->data) + 0;//sizes[0];
-    sizes[1] = 0;//surface->vs->luma_size;//surface->vs->chroma_size / 2;
-    data[2] = cedrus_mem_get_pointer(surface->yuv->data) + 0;//sizes[0] + sizes[1];
-    sizes[2] = 0;//surface->vs->luma_size;//surface->vs->chroma_size / 2;
+    data[1] = cedrus_mem_get_pointer(surface->yuv->data) + sizes[0];
+    sizes[1] = surface->vs->chroma_size / 2;
+    data[2] = cedrus_mem_get_pointer(surface->yuv->data) + sizes[0] + sizes[1];
+    sizes[2] = surface->vs->chroma_size / 2;
     
-    int format = DRM_FORMAT_RGBX8888;
+    int format = DRM_FORMAT_YVU420;
 
-//     struct bo* bo = bo_create(disp->fd, format, src_width, src_height,
-//                               buffer_bo_handles, buffer_pitches, buffer_offsets, 
-//                               PATTERN_SMPTE);
+    struct bo* bo = bo_create(disp->fd, format, src_width, src_height,
+                              buffer_bo_handles, buffer_pitches, buffer_offsets, 
+                              PATTERN_SMPTE);
 //     
     
     printf("DAVE source format is %d", surface->vs->source_format);
     
-    struct bo* bo = bo_create2(disp->fd, format, src_width, src_height,
-                              buffer_bo_handles, buffer_pitches, buffer_offsets, 
-                              data, sizes);
-    
+//     struct bo* bo = bo_create2(disp->fd, format, src_width, src_height,
+//                               buffer_bo_handles, buffer_pitches, buffer_offsets, 
+//                               data, sizes);
+//     
     if (!bo) {
         printf("No bo :(");
         return ;
@@ -316,7 +320,7 @@ err_res:
 // 		disp->video_info.fb.format = DISP_FORMAT_YUV420;
 // 		disp->video_info.fb.seq = DISP_SEQ_UVUV;
 // 		break;
-// 	case VDP_YCBCR_FORMAT_YV12:
+// 	case VDP_YCBCR_FORMAT_YV12: <--star warsis this one
 // 		disp->video_info.fb.mode = DISP_MOD_NON_MB_PLANAR;
 // 		disp->video_info.fb.format = DISP_FORMAT_YUV420;
 // 		disp->video_info.fb.seq = DISP_SEQ_UVUV;
