@@ -111,12 +111,13 @@ print_shader_info_log (
    if ( length ) {
       char* buffer = malloc(sizeof(char)* length);
       glGetShaderInfoLog ( shader , length , NULL , buffer );
-//       cout << "shader info: " <<  buffer << flush;
+      printf("shader info: %s \n", buffer);
       free(buffer);
  
       GLint success;
       glGetShaderiv( shader, GL_COMPILE_STATUS, &success );
-      if ( success != GL_TRUE )   exit ( 1 );
+      if ( success != GL_TRUE ) 
+          printf("Sad panda!\n");
    }
 }
  
@@ -127,8 +128,10 @@ load_shader (
    GLenum       type
 )
 {
+    printf("B");
    GLuint  shader = glCreateShader( type );
- 
+ printf("B");
+   
    glShaderSource  ( shader , 1 , &shader_source , NULL );
    glCompileShader ( shader );
  
@@ -276,7 +279,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
    //// get identifiers for the provided atom name strings
    Atom wm_state   = XInternAtom ( x_display, "_NET_WM_STATE", False );
 //    Atom fullscreen = XInternAtom ( x_display, "_NET_WM_STATE_FULLSCREEN", False );
-  
+
+   
    ///////  the egl part  //////////////////////////////////////////////////////////////////
    //  egl provides an interface to connect the graphics related functionality of openGL ES
    //  with the windowing interface and functionality of the native operation system (X11
@@ -328,23 +332,28 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
         printf("no create context %d.\n", eglGetError());
       return 0;
    }
+   
  
    //// associate the egl-context with the egl-surface
    eglMakeCurrent( egl_display, egl_surface, egl_surface, egl_context );
  
- 
+    printf("a\n");
    ///////  the openGL part  ///////////////////////////////////////////////////////////////
  
    GLuint vertexShader   = load_shader ( vertex_src , GL_VERTEX_SHADER  );     // load vertex shader
    GLuint fragmentShader = load_shader ( fragment_src , GL_FRAGMENT_SHADER );  // load fragment shader
  
+   printf("a\n");
    GLuint shaderProgram  = glCreateProgram ();                 // create program object
+   printf("a\n");
    glAttachShader ( shaderProgram, vertexShader );             // and attach both...
    glAttachShader ( shaderProgram, fragmentShader );           // ... shaders to it
  
    glLinkProgram ( shaderProgram );    // link the program
    glUseProgram  ( shaderProgram );    // and select it for usage
  
+   printf("a\n");
+   
    //// now get the locations (kind of handle) of the shaders variables
    position_loc  = glGetAttribLocation  ( shaderProgram , "position" );
    phase_loc     = glGetUniformLocation ( shaderProgram , "phase"    );
@@ -379,7 +388,9 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     data[2] = cedrus_mem_get_pointer(surface->yuv->data) + sizes[0] + sizes[1];
     sizes[2] = surface->vs->chroma_size / 2;*/
         printf("frame\n");
-        render();
+            eglMakeCurrent( egl_display, egl_surface, egl_surface, egl_context );
+
+         render();
     return 0;
 }
 
