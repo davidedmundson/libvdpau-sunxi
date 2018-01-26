@@ -223,6 +223,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
     struct sunxi_drm_private *disp = calloc(1, sizeof(*disp));
     disp->pub.close = sunxi_disp_close;
     disp->pub.set_video_layer = sunxi_disp_set_video_layer;
+    disp->pub.set_osd_layer = sunxi_disp_set_osd_layer;
+    disp->pub.close_osd_layer = sunxi_disp_close_osd_layer;
 
     
    x_display = XOpenDisplay ( NULL );   // open the standard display (the primary screen)
