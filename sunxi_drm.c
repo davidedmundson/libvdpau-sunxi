@@ -31,6 +31,7 @@
 #include <xf86drmMode.h>
 #include <libdrm/drm_fourcc.h>
 #include <memory.h>
+#include <libyuv.h>
 
 struct sunxi_drm_private
 {
@@ -49,9 +50,8 @@ struct sunxi_drm_private
 	drmModeModeInfo mode;
     //CRTC for if we go fullscreen
     int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
-struct drm_dev_t *next;
+    struct drm_dev_t *next;
     drmModeCrtcPtr crtcXX;
-
 
 };
 
@@ -221,8 +221,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     printf("so far so good!\n");
 
 
-    int src_w = 400;
-    int src_h = 400;
+    int src_w = surface->vs->width;
+    int src_h = surface->vs->height;
     
 	struct drm_mode_create_dumb create_request = {
 		.width  = src_w,
@@ -233,8 +233,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 	ret = ioctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_request);
     if (ret)
         printf("FAIL %d\n", ret);
-    
-    
+        
     int frame_buffer_id;
     ret = drmModeAddFB(
 		disp->fd,
@@ -245,8 +244,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     if (ret)
         printf("FAIL %d\n", ret);
     
-    
-    
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
 	mreq.handle = create_request.handle;
@@ -255,18 +252,41 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 		printf("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
     
-	uint32_t* buf = (uint32_t *) emmap(0, create_request.size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+	uint8_t* buf = (uint8_t *) emmap(0, create_request.size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
-    memset(buf, 0x80, create_request.size); //paint it grey
-    memcpy(buf, cedrus_mem_get_pointer(surface->yuv->data), create_request.size);
+//     int I420ToARGB(const uint8_t* src_y,
+//                int src_stride_y,
+//                const uint8_t* src_u,
+//                int src_stride_u,
+//                const uint8_t* src_v,
+//                int src_stride_v,
+//                uint8_t* dst_argb,
+//                int dst_stride_argb,
+//                int width,
+//                int height);
+    ret = I420ToARGB(cedrus_mem_get_pointer(surface->yuv->data),
+                     src_w,
+                     cedrus_mem_get_pointer(surface->yuv->data) + surface->vs->luma_size,
+                     src_w/2,
+                     cedrus_mem_get_pointer(surface->yuv->data) + surface->vs->luma_size + surface->vs->chroma_size/2,
+                     src_w/2,
+                     buf,
+                     create_request.pitch,
+                     width, 
+                     height);
+                     
+    printf("convert %d", ret);
     
     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
             r->crtcs[crtc - 1], frame_buffer_id, 0,
             x, y, width, height,
-            0 << 16, 0<< 16, src_w<< 16,
-            src_h<< 16);   
+            0 << 16, 0<< 16, width<< 16,
+            height<< 16);   
     
     drmModeRmFB(disp->fd, frame_buffer_id);
+    munmap(buf, create_request.size);
+
+//     free(buf);
     
     printf("done!\n");
     
@@ -366,10 +386,10 @@ err_res:
 // 	}
 //
 // 	return 0;
-// }
+}
 //
-// static void sunxi_disp_close_video_layer(struct sunxi_disp *sunxi_disp)
-// {
+static void sunxi_disp_close_video_layer(struct sunxi_disp *sunxi_disp)
+{
 // 	struct sunxi_disp_private *disp = (struct sunxi_disp_private *)sunxi_disp;
 //
 // 	uint32_t args[4] = { 0, disp->video_layer, 0, 0 };
