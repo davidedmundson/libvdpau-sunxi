@@ -225,8 +225,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_h = surface->vs->height;
     
 	struct drm_mode_create_dumb create_request = {
-		.width  = src_w,
-		.height = src_h,
+		.width  = width,
+		.height = height,
 		.bpp    = 32,
         .flags  = 3 //contig, cachable
 	};
@@ -275,7 +275,7 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
                      width, 
                      height);
                      
-    printf("convert %d", ret);
+    munmap(buf, create_request.size);
     
     ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
             r->crtcs[crtc - 1], frame_buffer_id, 0,
@@ -283,10 +283,15 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
             0 << 16, 0<< 16, width<< 16,
             height<< 16);   
     
-    drmModeRmFB(disp->fd, frame_buffer_id);
-    munmap(buf, create_request.size);
+    
+    //do this in the subsequent frame
+//     struct drm_mode_destroy_dumb arg;
+//     memset(&arg, 0, sizeof(arg));
+//     arg.handle = create_request.handle;
+//     ioctl(disp->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &arg);
+//     drmModeRmFB(disp->fd, frame_buffer_id);
 
-//     free(buf);
+    
     
     printf("done!\n");
     
