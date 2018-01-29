@@ -79,6 +79,10 @@ static void sunxi_disp_close_video_layer(struct sunxi_disp *sunxi_disp);
 static int sunxi_disp_set_osd_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface);
 static void sunxi_disp_close_osd_layer(struct sunxi_disp *sunxi_disp);
 
+static int sunxi_drm_init(struct sunxi_drm_private *disp, int width, int height);
+static void sunxi_drm_cleanup(struct sunxi_drm_private *disp);
+
+
 struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 {
     #define DRM_PATH "/dev/dri/card0"
@@ -131,9 +135,10 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 /* Creates a dumb buffer and a framebuffer of the specified size
  * 
  */
-static int sunxi_drm_init(sunxi_drm_private *disp, int width, int height)
+static int sunxi_drm_init(struct sunxi_drm_private *disp, int width, int height)
 {
     int ret = -1;
+    printf("DAVE, %d %d %d\n", disp->fd, width, height);
     struct drm_mode_create_dumb create_request = {
 		.width  = width,
 		.height = height,
@@ -146,23 +151,25 @@ static int sunxi_drm_init(sunxi_drm_private *disp, int width, int height)
         
     ret = drmModeAddFB(
 		disp->fd,
-		src_w, src_h,
-		24, 32, disp->video_buf_pitch,
-		disp->video_buf_handle, &disp->video_fb
+		width, height,
+		24, 32, create_request.pitch,
+		create_request.handle, &disp->video_fb
 	);
     if (ret)
-        printf("FAIL %d\n", ret); //TODO cleanup dumb buf here
-        
-    disp->video_buf_handle = disp->video_buf_handle;
-    disp->video_buf_pitch = disp->video_buf_pitch;
-    disp->video_buf_size = disp->video_buf_size;
+        printf("FAIL %d\n", ret); //TODO cleanup dumb buf here. Return error
+       
+    disp->video_buf_handle = create_request.handle;
+    disp->video_buf_pitch = create_request.pitch;
+    disp->video_buf_size = create_request.size;
+    
+    return 0;
 }
 
 
 /*
  * Cleanup dumb buffer and video buffer
  */
-static void sunxi_drm_cleanup(sunxi_drm_private *disp)
+static void sunxi_drm_cleanup(struct sunxi_drm_private *disp)
 {
     if (!disp->video_fb) {
         return;
@@ -243,8 +250,12 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_w = surface->vs->width;
     int src_h = surface->vs->height;
     
-    sunxi_drm_cleanup(); //only on resize?
-    sunxi_drm_init(width, height);
+    printf("make buffer");
+    sunxi_drm_cleanup(disp); //only on resize?
+    if(sunxi_drm_init(disp, width, height)) {
+        printf("Could not make buffer\n");
+        return;
+    }
     
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
