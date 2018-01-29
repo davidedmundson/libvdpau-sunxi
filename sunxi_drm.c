@@ -39,20 +39,16 @@ struct sunxi_drm_private
 
 	int fd;
     int ctrl_fd;
-    int plane_id;
-	int video_layer;
-	int osd_layer;
-
-    uint32_t *buf; //dumb buffer, kill this sometime
-	uint32_t pitch, size, handle; //dumb buffer ID
-	uint32_t fb_id;
-// 	uint32_t width, height;
-	drmModeModeInfo mode;
+	int video_plane;
+	int osd_plane;
+    
+    int video_fb;
+    int video_buf_handle;
+    int video_buf_pitch;
+    int video_buf_size;
+    
     //CRTC for if we go fullscreen
     int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
-    struct drm_dev_t *next;
-    drmModeCrtcPtr crtcXX;
-
 };
 
 
@@ -107,10 +103,13 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 	disp->pub.close_video_layer = sunxi_disp_close_video_layer;
 	disp->pub.set_osd_layer = sunxi_disp_set_osd_layer;
 	disp->pub.close_osd_layer = sunxi_disp_close_osd_layer;
-    disp->buf = 0;
+
+    disp->video_plane = 20;
+
+    
 	return (struct sunxi_disp *)disp;
-
-
+    
+    
 err_overlay:
     printf("err1");
 //     drmModeFreePlaneResources(pr);
@@ -124,8 +123,58 @@ err_res:
 
 static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 {
-
+    struct sunxi_drm_private *disp = (struct sunxi_drm_private *)sunxi_disp;
+    sunxi_drm_cleanup(disp);
 }
+
+
+/* Creates a dumb buffer and a framebuffer of the specified size
+ * 
+ */
+static int sunxi_drm_init(sunxi_drm_private *disp, int width, int height)
+{
+    int ret = -1;
+    struct drm_mode_create_dumb create_request = {
+		.width  = width,
+		.height = height,
+		.bpp    = 32,
+        .flags  = 3 //contig, cachable
+	};
+	ret = ioctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_request);
+    if (ret)
+        printf("FAIL %d\n", ret);
+        
+    ret = drmModeAddFB(
+		disp->fd,
+		src_w, src_h,
+		24, 32, disp->video_buf_pitch,
+		disp->video_buf_handle, &disp->video_fb
+	);
+    if (ret)
+        printf("FAIL %d\n", ret); //TODO cleanup dumb buf here
+        
+    disp->video_buf_handle = disp->video_buf_handle;
+    disp->video_buf_pitch = disp->video_buf_pitch;
+    disp->video_buf_size = disp->video_buf_size;
+}
+
+
+/*
+ * Cleanup dumb buffer and video buffer
+ */
+static void sunxi_drm_cleanup(sunxi_drm_private *disp)
+{
+    if (!disp->video_fb) {
+        return;
+    }
+    struct drm_mode_destroy_dumb arg;
+    memset(&arg, 0, sizeof(arg));
+    arg.handle = disp->video_buf_handle;
+    ioctl(disp->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &arg);
+    drmModeRmFB(disp->fd, disp->video_fb);
+    disp->video_fb = 0;
+}
+
 
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
 {
@@ -135,14 +184,10 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     drmModePlaneResPtr pr;
 
     int crtc_x = 0, crtc_y = 0, crtc_w = 0, crtc_h = 0;
-    int old_fb = 0;
     int ret = -1;
     int i, j;
-    int plane_id = 0;
     int crtc = 0;
 
-    
-    
     /**
      * get drm res for crtc
      */
@@ -177,31 +222,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     if (!pr || !pr->count_planes)
         goto err_plane_res;
 
-    /**
-     * find available plane
-     */
-    for (i = 0; i < pr->count_planes; i++)
-    {
-        drmModePlanePtr p = drmModeGetPlane(disp->fd, pr->planes[i]);
-        if (p && p->possible_crtcs == crtc)
-            for (j = 0; j < p->count_formats && !plane_id; j++)
-                if (p->formats[j] == DRM_FORMAT_NV12)
-                {
-                    plane_id = pr->planes[i];
-//                     old_fb = p->fb_id;
-                }
-        drmModeFreePlane(p);
-    }
-    
-    
-    plane_id=20;//because reasons! don't ask
-    printf("plane ID is %d", plane_id);
-
-    /**
-     * failed to get crtc or plane
-     */
-    if (!crtc || ! plane_id)
-        goto err_overlay;
 
 //     if (!fullscreen)
 //     {
@@ -218,42 +238,26 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
 //                 RootWindow(dev->display, dev->screen),
 //                 clip_w, clip_h, &crtc_w, &crtc_h, &win);
 //     }
-    printf("so far so good!\n");
 
 
     int src_w = surface->vs->width;
     int src_h = surface->vs->height;
     
-	struct drm_mode_create_dumb create_request = {
-		.width  = width,
-		.height = height,
-		.bpp    = 32,
-        .flags  = 3 //contig, cachable
-	};
-	ret = ioctl(disp->fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_request);
-    if (ret)
-        printf("FAIL %d\n", ret);
-        
-    int frame_buffer_id;
-    ret = drmModeAddFB(
-		disp->fd,
-		src_w, src_h,
-		24, 32, create_request.pitch,
-		create_request.handle, &frame_buffer_id
-	);
-    if (ret)
-        printf("FAIL %d\n", ret);
+    sunxi_drm_cleanup(); //only on resize?
+    sunxi_drm_init(width, height);
     
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
-	mreq.handle = create_request.handle;
-        
+	mreq.handle = disp->video_buf_handle;
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		printf("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
     
-	uint8_t* buf = (uint8_t *) emmap(0, create_request.size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+	uint8_t* buf = (uint8_t *) emmap(0, disp->video_buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
+    //important TODO // 	switch (surface->vs->source_format) {
+
+    
 //     int I420ToARGB(const uint8_t* src_y,
 //                int src_stride_y,
 //                const uint8_t* src_u,
@@ -271,27 +275,17 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
                      cedrus_mem_get_pointer(surface->yuv->data) + surface->vs->luma_size + surface->vs->chroma_size/2,
                      src_w/2,
                      buf,
-                     create_request.pitch,
-                     width, 
+                     disp->video_buf_pitch,
+                     width,
                      height);
                      
-    munmap(buf, create_request.size);
+    munmap(buf, disp->video_buf_size);
     
-    ret = drmModeSetPlane(disp->ctrl_fd, plane_id,
-            r->crtcs[crtc - 1], frame_buffer_id, 0,
+    ret = drmModeSetPlane(disp->ctrl_fd, disp->video_plane,
+            r->crtcs[crtc - 1], disp->video_fb, 0,
             x, y, width, height,
             0 << 16, 0<< 16, width<< 16,
             height<< 16);   
-    
-    
-    //do this in the subsequent frame
-//     struct drm_mode_destroy_dumb arg;
-//     memset(&arg, 0, sizeof(arg));
-//     arg.handle = create_request.handle;
-//     ioctl(disp->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &arg);
-//     drmModeRmFB(disp->fd, frame_buffer_id);
-
-    
     
     printf("done!\n");
     
