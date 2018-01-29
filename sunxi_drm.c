@@ -47,6 +47,8 @@ struct sunxi_drm_private
     int video_buf_pitch;
     int video_buf_size;
     
+    int last_width, last_height;
+    
     //CRTC for if we go fullscreen
     int crtc_x, crtc_y, crtc_w, crtc_h, crtc_id;
 };
@@ -250,11 +252,15 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_w = surface->vs->width;
     int src_h = surface->vs->height;
     
-    printf("make buffer");
-    sunxi_drm_cleanup(disp); //only on resize?
-    if(sunxi_drm_init(disp, width, height)) {
-        printf("Could not make buffer\n");
-        return;
+    if (disp->last_width != src_w || disp->last_height != src_h) {
+        printf("New buffer");
+        disp->last_width = src_w;
+        disp->last_height = src_h;
+        sunxi_drm_cleanup(disp); 
+        if(sunxi_drm_init(disp, src_w, src_h)) {
+            printf("Could not make buffer\n");
+            return;
+        }
     }
     
     struct drm_mode_map_dumb mreq;
@@ -287,16 +293,16 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
                      src_w/2,
                      buf,
                      disp->video_buf_pitch,
-                     width,
-                     height);
+                     src_w,
+                     src_h);
                      
     munmap(buf, disp->video_buf_size);
     
     ret = drmModeSetPlane(disp->ctrl_fd, disp->video_plane,
             r->crtcs[crtc - 1], disp->video_fb, 0,
             x, y, width, height,
-            0 << 16, 0<< 16, width<< 16,
-            height<< 16);   
+            0 << 16, 0<< 16, src_w << 16,
+            src_h << 16);   
     
     printf("done!\n");
     
