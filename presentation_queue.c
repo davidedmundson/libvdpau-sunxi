@@ -172,6 +172,7 @@ VdpStatus vdp_presentation_queue_display(VdpPresentationQueue presentation_queue
                                          VdpTime earliest_presentation_time)
 {
 	queue_ctx_t *q = handle_get(presentation_queue);
+    printf("queue %d!\n", q->device->osd_enabled);
 	if (!q)
 		return VDP_STATUS_INVALID_HANDLE;
 
@@ -185,7 +186,7 @@ VdpStatus vdp_presentation_queue_display(VdpPresentationQueue presentation_queue
 	Window c;
 	int x,y;
 	XTranslateCoordinates(q->device->display, q->target->drawable, RootWindow(q->device->display, q->device->screen), 0, 0, &x, &y, &c);
-	XClearWindow(q->device->display, q->target->drawable);
+// 	XClearWindow(q->device->display, q->target->drawable);
 
 	if (os->vs)
 		q->target->disp->set_video_layer(q->target->disp, x, y, clip_width, clip_height, os);

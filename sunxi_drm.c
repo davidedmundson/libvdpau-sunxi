@@ -112,10 +112,8 @@ struct sunxi_disp *sunxi_drm_open(int osd_enabled)
 
     disp->video_plane = 20;
 
-    
 	return (struct sunxi_disp *)disp;
-    
-    
+
 err_overlay:
     printf("err1");
 //     drmModeFreePlaneResources(pr);
@@ -263,6 +261,8 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
         }
     }
     
+    printf("size %d %d %d %d\n", x, y, width, height);
+    
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
 	mreq.handle = disp->video_buf_handle;
@@ -406,14 +406,17 @@ err_res:
 //
 static void sunxi_disp_close_video_layer(struct sunxi_disp *sunxi_disp)
 {
-// 	struct sunxi_disp_private *disp = (struct sunxi_disp_private *)sunxi_disp;
-//
+	struct sunxi_drm_private *disp = (struct sunxi_drm_private *)sunxi_disp;
+    sunxi_drm_cleanup(disp);
+    
 // 	uint32_t args[4] = { 0, disp->video_layer, 0, 0 };
 // 	ioctl(disp->fd, DISP_CMD_LAYER_CLOSE, args);
 }
 
 static int sunxi_disp_set_osd_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
-{/*
+{
+    return 0;
+    /*
 	struct sunxi_disp_private *disp = (struct sunxi_disp_private *)sunxi_disp;
 
 	switch (surface->rgba.format)
