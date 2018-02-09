@@ -172,7 +172,6 @@ VdpStatus vdp_presentation_queue_display(VdpPresentationQueue presentation_queue
                                          VdpTime earliest_presentation_time)
 {
 	queue_ctx_t *q = handle_get(presentation_queue);
-    printf("queue %d!\n", q->device->osd_enabled);
 	if (!q)
 		return VDP_STATUS_INVALID_HANDLE;
 

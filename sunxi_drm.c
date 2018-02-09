@@ -138,7 +138,6 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 static int sunxi_drm_init(struct sunxi_drm_private *disp, int width, int height)
 {
     int ret = -1;
-    printf("DAVE, %d %d %d\n", disp->fd, width, height);
     struct drm_mode_create_dumb create_request = {
 		.width  = width,
 		.height = height,
@@ -200,7 +199,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
      */
     r = drmModeGetResources(disp->fd);
     if (!r || !r->count_crtcs) {
-        printf("DAVE :( %d\n", r);
         goto err_res;
     }
 
@@ -251,7 +249,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     int src_h = surface->vs->height;
     
     if (disp->last_width != src_w || disp->last_height != src_h) {
-        printf("New buffer");
         disp->last_width = src_w;
         disp->last_height = src_h;
         sunxi_drm_cleanup(disp); 
@@ -260,8 +257,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
             return;
         }
     }
-    
-    printf("size %d %d %d %d\n", x, y, width, height);
     
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
@@ -303,8 +298,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
             x, y, width, height,
             0 << 16, 0<< 16, src_w << 16,
             src_h << 16);   
-    
-    printf("done!\n");
     
     return 0;
 
