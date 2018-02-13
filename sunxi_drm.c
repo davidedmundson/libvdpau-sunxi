@@ -33,6 +33,14 @@
 #include <memory.h>
 #include <libyuv.h>
 
+struct dumb_framebuffer
+{
+    int video_fb;
+    int video_buf_handle;
+    int video_buf_pitch;
+    int video_buf_size;
+};
+
 struct sunxi_drm_private
 {
 	struct sunxi_disp pub;
@@ -42,10 +50,9 @@ struct sunxi_drm_private
 	int video_plane;
 	int osd_plane;
     
-    int video_fb;
-    int video_buf_handle;
-    int video_buf_pitch;
-    int video_buf_size;
+    struct dumb_framebuffer buffers[2];
+    struct dumb_framebuffer* front;
+    struct dumb_framebuffer* back;
     
     int last_width, last_height;
     
@@ -135,7 +142,7 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
 /* Creates a dumb buffer and a framebuffer of the specified size
  * 
  */
-static int sunxi_drm_init(struct sunxi_drm_private *disp, int width, int height)
+static int sunxi_drm_buffer_init(struct sunxi_drm_private *disp, struct dumb_framebuffer *buffer, int width, int height)
 {
     int ret = -1;
     struct drm_mode_create_dumb create_request = {
@@ -152,35 +159,56 @@ static int sunxi_drm_init(struct sunxi_drm_private *disp, int width, int height)
 		disp->fd,
 		width, height,
 		24, 32, create_request.pitch,
-		create_request.handle, &disp->video_fb
+		create_request.handle, &buffer->video_fb
 	);
     if (ret)
         printf("FAIL %d\n", ret); //TODO cleanup dumb buf here. Return error
        
-    disp->video_buf_handle = create_request.handle;
-    disp->video_buf_pitch = create_request.pitch;
-    disp->video_buf_size = create_request.size;
+    buffer->video_buf_handle = create_request.handle;
+    buffer->video_buf_pitch = create_request.pitch;
+    buffer->video_buf_size = create_request.size;
     
     return 0;
 }
 
+static int sunxi_drm_init(struct sunxi_drm_private *disp, int width, int height)
+{
+    int ret = -1;
+    ret = sunxi_drm_buffer_init(disp, &disp->buffers[0], width, height);
+    if (ret)
+        printf("Failed to create buffer %d\n", ret);
+    ret = sunxi_drm_buffer_init(disp, &disp->buffers[1], width, height);
+    if (ret)
+        printf("FAIL %d\n", ret); //TODO cleanup dumb buf here. Return error
+        
+    disp->back = &disp->buffers[0];
+    disp->front = &disp->buffers[1];
+    return 0;
+}
+
+static void sunxi_drm_buffer_cleanup(struct sunxi_drm_private *disp, struct dumb_framebuffer *buffer)
+{
+    struct drm_mode_destroy_dumb arg;
+    memset(&arg, 0, sizeof(arg));
+    arg.handle = buffer->video_buf_handle;
+    ioctl(disp->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &arg);
+    drmModeRmFB(disp->fd, buffer->video_fb);
+}
 
 /*
  * Cleanup dumb buffer and video buffer
  */
 static void sunxi_drm_cleanup(struct sunxi_drm_private *disp)
 {
-    if (!disp->video_fb) {
-        return;
+    if (disp->front) {
+        sunxi_drm_buffer_cleanup(disp, disp->front);
+        disp->front = 0;
     }
-    struct drm_mode_destroy_dumb arg;
-    memset(&arg, 0, sizeof(arg));
-    arg.handle = disp->video_buf_handle;
-    ioctl(disp->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &arg);
-    drmModeRmFB(disp->fd, disp->video_fb);
-    disp->video_fb = 0;
+    if (disp->back) {
+        sunxi_drm_buffer_cleanup(disp, disp->back);
+        disp->back = 0;
+    }
 }
-
 
 static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int y, int width, int height, output_surface_ctx_t *surface)
 {
@@ -228,23 +256,6 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
         goto err_plane_res;
 
 
-//     if (!fullscreen)
-//     {
-//         /**
-//          * get window's x y w h
-//          */
-//         XTranslateCoordinates(dev->display,
-//                 dev->drawable,
-//                 RootWindow(dev->display, dev->screen),
-//                 0, 0, &crtc_x, &crtc_y, &win);
-//
-//         XTranslateCoordinates(dev->display,
-//                 dev->drawable,
-//                 RootWindow(dev->display, dev->screen),
-//                 clip_w, clip_h, &crtc_w, &crtc_h, &win);
-//     }
-
-
     int src_w = surface->vs->width;
     int src_h = surface->vs->height;
     
@@ -260,12 +271,12 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
     
     struct drm_mode_map_dumb mreq;
     memset(&mreq, 0, sizeof(struct drm_mode_map_dumb));
-	mreq.handle = disp->video_buf_handle;
+	mreq.handle = disp->back->video_buf_handle;
 	if (drmIoctl(disp->fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq))
 		printf("drmIoctl DRM_IOCTL_MODE_MAP_DUMB failed");
 
     
-	uint8_t* buf = (uint8_t *) emmap(0, disp->video_buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
+	uint8_t* buf = (uint8_t *) emmap(0, disp->back->video_buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, disp->fd, mreq.offset);
 
     //important TODO // 	switch (surface->vs->source_format) {
 
@@ -287,14 +298,21 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
                      cedrus_mem_get_pointer(surface->yuv->data) + surface->vs->luma_size + surface->vs->chroma_size/2,
                      src_w/2,
                      buf,
-                     disp->video_buf_pitch,
+                     disp->back->video_buf_pitch,
                      src_w,
                      src_h);
                      
-    munmap(buf, disp->video_buf_size);
+    munmap(buf, disp->back->video_buf_size);
+    
+    printf("Set plane %d,%d: %dx%d\n", x,y, width, height);
+    
+    struct dumb_framebuffer* old_front = disp->front;
+    disp->front = disp->back;
+    disp->back = old_front;
+    printf("Flip %p %p", disp->front, disp->back);
     
     ret = drmModeSetPlane(disp->ctrl_fd, disp->video_plane,
-            r->crtcs[crtc - 1], disp->video_fb, 0,
+            r->crtcs[crtc - 1], disp->front->video_fb, 0,
             x, y, width, height,
             0 << 16, 0<< 16, src_w << 16,
             src_h << 16);   
