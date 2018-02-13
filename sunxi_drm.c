@@ -138,7 +138,6 @@ static void sunxi_disp_close(struct sunxi_disp *sunxi_disp)
     sunxi_drm_cleanup(disp);
 }
 
-
 /* Creates a dumb buffer and a framebuffer of the specified size
  * 
  */
@@ -304,12 +303,9 @@ static int sunxi_disp_set_video_layer(struct sunxi_disp *sunxi_disp, int x, int 
                      
     munmap(buf, disp->back->video_buf_size);
     
-    printf("Set plane %d,%d: %dx%d\n", x,y, width, height);
-    
     struct dumb_framebuffer* old_front = disp->front;
     disp->front = disp->back;
     disp->back = old_front;
-    printf("Flip %p %p", disp->front, disp->back);
     
     ret = drmModeSetPlane(disp->ctrl_fd, disp->video_plane,
             r->crtcs[crtc - 1], disp->front->video_fb, 0,
